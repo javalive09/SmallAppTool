@@ -48,7 +48,6 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getOverflowMenu();
-        checkSu();
     }
 
     BroadcastReceiver forceStopReceiver = new BroadcastReceiver() {
@@ -66,26 +65,6 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
         }
     };
     
-    public void checkSu() {
-        List<String> commands = new ArrayList<String>();
-        commands.add("su");
-        ProcessBuilder pb = new ProcessBuilder(commands);
-        String result="";
-        try {
-            Process process = pb.start();
-            InputStream in = process.getInputStream();
-            byte[] re=new byte[1024];
-            while (in.read(re)!= -1) {
-                result = new String(re);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "这个工具只适用于root过的手机！", Toast.LENGTH_LONG).show();
-            finish();
-        }
-        Log.i("peter", result);
-    }
-
     /**
      * 获取所有的应用信息
      * 
