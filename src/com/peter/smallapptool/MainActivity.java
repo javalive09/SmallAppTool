@@ -42,28 +42,15 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
     private String forecStopPackageName = null;
     private AppAdapter<AppInfo> appAdapter = null;
     private static final String TOP_APP = "top_app";
-
+    private BroadcastReceiver forceStopReceiver;
+    
+    
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getOverflowMenu();
         relodData();
     }
-
-    BroadcastReceiver forceStopReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            Uri data = intent.getData();
-            if (data != null) {
-                String str = data.getSchemeSpecificPart();
-                if (!TextUtils.isEmpty(forecStopPackageName) && !TextUtils.isEmpty(str)
-                        && str.equals(forecStopPackageName)) {
-                    finishSetting();
-                    unregisterReceiver(forceStopReceiver);
-                }
-            }
-        }
-    };
     
     /**
      * 获取所有的应用信息
@@ -103,6 +90,9 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
     @Override
     protected void onResume() {
         super.onResume();
+        if(forceStopReceiver != null) {
+            unregisterReceiver(forceStopReceiver);
+        }
     }
 
     private void relodData() {
@@ -239,6 +229,21 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
     }
 
     private void showForceStopView(String packageName) {
+        forceStopReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                Uri data = intent.getData();
+                if (data != null) {
+                    String str = data.getSchemeSpecificPart();
+                    if (!TextUtils.isEmpty(forecStopPackageName) && !TextUtils.isEmpty(str)
+                            && str.equals(forecStopPackageName)) {
+                        finishSetting();
+                        unregisterReceiver(forceStopReceiver);
+                        forceStopReceiver = null;
+                    }
+                }
+            }
+        };
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_PACKAGE_RESTARTED);
         filter.addDataScheme("package");
