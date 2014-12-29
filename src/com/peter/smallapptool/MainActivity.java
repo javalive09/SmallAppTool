@@ -43,12 +43,14 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
     private AppAdapter<AppInfo> appAdapter = null;
     private static final String TOP_APP = "top_app";
     private BroadcastReceiver forceStopReceiver;
+    private ListView appListView;
     
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getOverflowMenu();
+        appAdapter = new AppAdapter<AppInfo>(MainActivity.this);
         relodData();
     }
     
@@ -92,17 +94,18 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
         super.onResume();
         if(forceStopReceiver != null) {
             unregisterReceiver(forceStopReceiver);
+            forceStopReceiver = null;
         }
     }
 
     private void relodData() {
         setContentView(R.layout.main);
-        appAdapter = new AppAdapter<AppInfo>(MainActivity.this, getAllAppInfos());
-        ListView appListView = (ListView) findViewById(R.id.app_list);
+        appListView = (ListView) findViewById(R.id.app_list);
         appListView.setOnItemClickListener(this);
         appListView.setOnItemLongClickListener(this);
-        appListView.setAdapter(appAdapter);
         loading = (FrameLayout) findViewById(R.id.pbview);
+        appAdapter.setData(getAllAppInfos());
+        appListView.setAdapter(appAdapter);
     }
 
     @Override
@@ -237,9 +240,11 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
                     String str = data.getSchemeSpecificPart();
                     if (!TextUtils.isEmpty(forecStopPackageName) && !TextUtils.isEmpty(str)
                             && str.equals(forecStopPackageName)) {
-                        finishSetting();
-                        unregisterReceiver(forceStopReceiver);
-                        forceStopReceiver = null;
+                        
+                        String action = intent.getAction();
+                        if("android.intent.action.PACKAGE_RESTARTED".equals(action)) {
+                            finishSetting();
+                        }
                     }
                 }
             }

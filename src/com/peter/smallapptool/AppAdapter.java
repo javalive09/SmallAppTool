@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.support.v4.util.LruCache;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -23,11 +24,27 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
 	private List<AppInfo> mAppInfos;
 	private MainActivity mAct;
 	private PackageManager mPm;
+	private LruCache<String, Bitmap> mMemoryCache;
 
-	public AppAdapter(MainActivity act, List<AppInfo> appInfos) {
-	    this.mAppInfos = appInfos;
+	public AppAdapter(MainActivity act) {
 	    mAct = act;
 	    mPm = mAct.getPackageManager();
+	    int maxMemory = (int) Runtime.getRuntime().maxMemory();    
+        int mCacheSize = maxMemory / 5;  
+        //给LruCache分配1/8 4M  
+        mMemoryCache = new LruCache<String, Bitmap>(mCacheSize){  
+  
+            //必须重写此方法，来测量Bitmap的大小  
+            @Override  
+            protected int sizeOf(String key, Bitmap value) {  
+                return value.getRowBytes() * value.getHeight();  
+            }  
+              
+        };  
+	}
+	
+	public void setData(List<AppInfo> appInfos) {
+	    this.mAppInfos = appInfos;
 	}
 
 	public List<AppInfo> getInfos() {
@@ -90,14 +107,20 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         } catch (NameNotFoundException e) {
             e.printStackTrace();
         }
-        if(inf != null) {
-            BitmapDrawable bitmapDrawable = (BitmapDrawable) inf.loadIcon(mPm);
-            Drawable icon = getRightSizeIcon(bitmapDrawable);
-            cache.app_icon.setImageDrawable(icon);
-        }else {
-            cache.app_icon.setImageResource(R.drawable.ic_launcher);
-        }
         
+        //取缓存图片
+        Bitmap bmIcon = mMemoryCache.get(info.packageName);
+        if(bmIcon == null){
+            BitmapDrawable bitmapDrawable = (BitmapDrawable) inf.loadIcon(mPm);
+            bmIcon = getRightSizeIcon(bitmapDrawable).getBitmap();
+            if(bmIcon != null) {
+                mMemoryCache.put(info.packageName, bmIcon);
+            }else {
+                BitmapDrawable defaultDrawable = (BitmapDrawable) mAct.getResources().getDrawable(R.drawable.ic_launcher);
+                bmIcon = defaultDrawable.getBitmap();
+            }
+        }
+        cache.app_icon.setImageBitmap(bmIcon);
         cache.app_name.setText(info.appName);
         cache.clearCache.setOnClickListener(mAct);
         cache.uninstall.setOnClickListener(mAct);
@@ -111,7 +134,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         return convertView;
 	}
 	
-    private Drawable getRightSizeIcon(BitmapDrawable drawable) {
+    private BitmapDrawable getRightSizeIcon(BitmapDrawable drawable) {
         Drawable rightDrawable = mAct.getResources().getDrawable(R.drawable.ic_launcher);
         int rightSize = rightDrawable.getIntrinsicWidth();
         Bitmap bitmap = drawable.getBitmap();
