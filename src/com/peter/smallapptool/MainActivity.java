@@ -1,7 +1,6 @@
 package com.peter.smallapptool;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +47,7 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getOverflowMenu();
+        relodData();
     }
 
     BroadcastReceiver forceStopReceiver = new BroadcastReceiver() {
@@ -103,7 +103,6 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
     @Override
     protected void onResume() {
         super.onResume();
-        relodData();
     }
 
     private void relodData() {
@@ -186,10 +185,10 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
                 try {
                     pb.start();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    showForceStopView(packageName);
                 }
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -226,10 +225,10 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
                 try {
                     pb.start();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    showForceStopView(packageName);
                 }
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

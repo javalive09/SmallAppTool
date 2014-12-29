@@ -6,7 +6,7 @@
     <item
         android:id="@+id/action_refresh"
         android:orderInCategory="1"
-        android:title="@string/action_help"/>
+        android:title="@string/action_refresh"/>
     <item
         android:id="@+id/action_help"
         android:orderInCategory="2"
