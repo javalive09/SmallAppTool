@@ -1,6 +1,13 @@
 package com.peter.smallapptool;
 
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -9,9 +16,12 @@ import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.AsyncTask;
 import android.support.v4.util.LruCache;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
+import android.widget.AbsListView.OnScrollListener;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -19,66 +29,83 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import com.peter.smallapptool.R;
 
-public class AppAdapter<AppInfo> extends BaseAdapter {
+public class AppAdapter<AppInfo> extends BaseAdapter implements OnScrollListener {
 
-	private List<AppInfo> mAppInfos;
-	private MainActivity mAct;
-	private PackageManager mPm;
-	private LruCache<String, Bitmap> mMemoryCache;
+    private List<AppInfo> mAppInfos;
+    private MainActivity mAct;
+    private PackageManager mPm;
+    private LruCache<String, Bitmap> mMemoryCache;
+    private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
+    private static final int CORE_POOL_SIZE = CPU_COUNT + 1;
+    private static final int MAXIMUM_POOL_SIZE = CPU_COUNT + 1;
+    private static final int KEEP_ALIVE = 1;
+    private Executor thread_pool_executor;
+    private BitmapDrawable mDefaultDrawable;
+    private BlockingQueue<Runnable> sPoolWorkQueue = new LinkedBlockingQueue<Runnable>(10);
+    private boolean mIsScrolling = false;
+    private static final ThreadFactory sThreadFactory = new ThreadFactory() {
+        private final AtomicInteger mCount = new AtomicInteger(1);
 
-	public AppAdapter(MainActivity act) {
-	    mAct = act;
-	    mPm = mAct.getPackageManager();
-	    int maxMemory = (int) Runtime.getRuntime().maxMemory();    
-        int mCacheSize = maxMemory / 5;  
-        //给LruCache分配1/8 4M  
-        mMemoryCache = new LruCache<String, Bitmap>(mCacheSize){  
-  
+        public Thread newThread(Runnable r) {
+            return new Thread(r, "AsyncTask #" + mCount.getAndIncrement());
+        }
+    };
+
+    public AppAdapter(MainActivity act) {
+        mAct = act;
+        mPm = mAct.getPackageManager();
+        int maxMemory = (int) Runtime.getRuntime().maxMemory();
+        int mCacheSize = maxMemory / 5;
+        //给LruCache分配 
+        mMemoryCache = new LruCache<String, Bitmap>(mCacheSize) {
+
             //必须重写此方法，来测量Bitmap的大小  
-            @Override  
-            protected int sizeOf(String key, Bitmap value) {  
-                return value.getRowBytes() * value.getHeight();  
-            }  
-              
-        };  
-	}
-	
-	public void setData(List<AppInfo> appInfos) {
-	    this.mAppInfos = appInfos;
-	}
+            @Override
+            protected int sizeOf(String key, Bitmap value) {
+                return value.getRowBytes() * value.getHeight();
+            }
 
-	public List<AppInfo> getInfos() {
-		return mAppInfos;
-	}
-	
-	/**
-	 * 更新列表数据
-	 * 
-	 * @param appInfos
-	 */
-	public void updateData(List<AppInfo> appInfos) {
-		this.mAppInfos = appInfos;
-		notifyDataSetInvalidated();
-	}
+        };
+        thread_pool_executor = new ThreadPoolExecutor(CORE_POOL_SIZE, MAXIMUM_POOL_SIZE, KEEP_ALIVE, TimeUnit.SECONDS,
+                sPoolWorkQueue, sThreadFactory, new ThreadPoolExecutor.DiscardOldestPolicy());
+    }
 
-	@Override
-	public int getCount() {
-		return mAppInfos.size();
-	}
+    public void setData(List<AppInfo> appInfos) {
+        this.mAppInfos = appInfos;
+    }
 
-	@Override
-	public AppInfo getItem(int position) {
-		return mAppInfos != null ? mAppInfos.get(position) : null;
-	}
+    public List<AppInfo> getInfos() {
+        return mAppInfos;
+    }
 
-	@Override
-	public long getItemId(int position) {
-		return position;
-	}
+    /**
+     * 更新列表数据
+     * 
+     * @param appInfos
+     */
+    public void updateData(List<AppInfo> appInfos) {
+        this.mAppInfos = appInfos;
+        notifyDataSetInvalidated();
+    }
 
-	@Override
-	public View getView(int position, View convertView, ViewGroup parent) {
-	 // 获取数据
+    @Override
+    public int getCount() {
+        return mAppInfos.size();
+    }
+
+    @Override
+    public AppInfo getItem(int position) {
+        return mAppInfos != null ? mAppInfos.get(position) : null;
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return position;
+    }
+
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+        // 获取数据
         AppInfo info = (AppInfo) getItem(position);
 
         // 获取View
@@ -107,17 +134,16 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         } catch (NameNotFoundException e) {
             e.printStackTrace();
         }
-        
+
         //取缓存图片
         Bitmap bmIcon = mMemoryCache.get(info.packageName);
-        if(bmIcon == null){
-            BitmapDrawable bitmapDrawable = (BitmapDrawable) inf.loadIcon(mPm);
-            bmIcon = getRightSizeIcon(bitmapDrawable).getBitmap();
-            if(bmIcon != null) {
-                mMemoryCache.put(info.packageName, bmIcon);
-            }else {
-                BitmapDrawable defaultDrawable = (BitmapDrawable) mAct.getResources().getDrawable(R.drawable.ic_launcher);
-                bmIcon = defaultDrawable.getBitmap();
+        if (bmIcon == null) {
+            if (mDefaultDrawable == null) {
+                mDefaultDrawable = (BitmapDrawable) mAct.getResources().getDrawable(R.drawable.ic_launcher);
+            }
+            bmIcon = mDefaultDrawable.getBitmap();
+            if (!mIsScrolling) {
+                thread_pool_executor.execute(new ThreadPoolTask(cache.app_icon, inf));
             }
         }
         cache.app_icon.setImageBitmap(bmIcon);
@@ -125,15 +151,59 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         cache.clearCache.setOnClickListener(mAct);
         cache.uninstall.setOnClickListener(mAct);
         cache.detail.setOnClickListener(mAct);
-        if(info.mShowOperation) {
+        if (info.mShowOperation) {
             cache.operation.setVisibility(View.VISIBLE);
-        }else {
+        } else {
             cache.operation.setVisibility(View.GONE);
         }
-        
+
         return convertView;
-	}
-	
+    }
+
+    @Override
+    public void onScrollStateChanged(AbsListView view, int scrollState) {
+        if (scrollState == SCROLL_STATE_IDLE) {
+            mIsScrolling = false;
+            notifyDataSetChanged();
+        } else {
+            mIsScrolling = true;
+        }
+    }
+
+    @Override
+    public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
+        if (view.getChildCount() == 0) {
+            return;
+        }
+    }
+
+    private class ThreadPoolTask implements Runnable {
+
+        ImageView mAppIcon;
+        ApplicationInfo mInfo;
+
+        public ThreadPoolTask(ImageView appIcon, ApplicationInfo info) {
+            mAppIcon = appIcon;
+            mInfo = info;
+        }
+
+        @Override
+        public void run() {
+            BitmapDrawable bitmapDrawable = (BitmapDrawable) mInfo.loadIcon(mPm);
+            final Bitmap bmIcon = getRightSizeIcon(bitmapDrawable).getBitmap();
+            mMemoryCache.put(mInfo.packageName, bmIcon);
+            mAct.runOnUiThread(new Runnable() {
+
+                @Override
+                public void run() {
+                    mAppIcon.setImageBitmap(bmIcon);
+                }
+
+            });
+        }
+
+    }
+
     private BitmapDrawable getRightSizeIcon(BitmapDrawable drawable) {
         Drawable rightDrawable = mAct.getResources().getDrawable(R.drawable.ic_launcher);
         int rightSize = rightDrawable.getIntrinsicWidth();
@@ -146,19 +216,19 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         Bitmap bm = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
         return new BitmapDrawable(mAct.getResources(), bm);
     }
-	
-	public static class ViewCache {
-		ImageView app_icon;
-		TextView app_name;
-		Button uninstall;
-		Button detail;
-		Button clearCache;
-		LinearLayout operation;
-	}
 
-	public static class AppInfo {
-		public String appName;
-		public String packageName;
-		public boolean mShowOperation;
-	}
+    public static class ViewCache {
+        ImageView app_icon;
+        TextView app_name;
+        Button uninstall;
+        Button detail;
+        Button clearCache;
+        LinearLayout operation;
+    }
+
+    public static class AppInfo {
+        public String appName;
+        public String packageName;
+        public boolean mShowOperation;
+    }
 }
