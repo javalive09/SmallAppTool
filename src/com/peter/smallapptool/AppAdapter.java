@@ -19,8 +19,6 @@ import android.graphics.drawable.Drawable;
 import android.support.v4.util.LruCache;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AbsListView;
-import android.widget.AbsListView.OnScrollListener;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -28,7 +26,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import com.peter.smallapptool.R;
 
-public class AppAdapter<AppInfo> extends BaseAdapter implements OnScrollListener {
+public class AppAdapter<AppInfo> extends BaseAdapter {
 
     private List<AppInfo> mAppInfos;
     private MainActivity mAct;
@@ -41,7 +39,6 @@ public class AppAdapter<AppInfo> extends BaseAdapter implements OnScrollListener
     private Executor thread_pool_executor;
     private BitmapDrawable mDefaultDrawable;
     private BlockingQueue<Runnable> sPoolWorkQueue = new LinkedBlockingQueue<Runnable>(10);
-    private boolean mIsScrolling = false;
     private static final ThreadFactory sThreadFactory = new ThreadFactory() {
         private final AtomicInteger mCount = new AtomicInteger(1);
 
@@ -141,9 +138,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter implements OnScrollListener
                 mDefaultDrawable = (BitmapDrawable) mAct.getResources().getDrawable(R.drawable.ic_launcher);
             }
             bmIcon = mDefaultDrawable.getBitmap();
-            if (!mIsScrolling) {
-                thread_pool_executor.execute(new ThreadPoolTask(cache.app_icon, inf));
-            }
+            thread_pool_executor.execute(new ThreadPoolTask(cache.app_icon, inf));
         }
         cache.app_icon.setImageBitmap(bmIcon);
         cache.app_name.setText(info.appName);
@@ -157,23 +152,6 @@ public class AppAdapter<AppInfo> extends BaseAdapter implements OnScrollListener
         }
 
         return convertView;
-    }
-
-    @Override
-    public void onScrollStateChanged(AbsListView view, int scrollState) {
-        if (scrollState == SCROLL_STATE_IDLE) {
-            mIsScrolling = false;
-            notifyDataSetChanged();
-        } else {
-            mIsScrolling = true;
-        }
-    }
-
-    @Override
-    public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {
-        if (view.getChildCount() == 0) {
-            return;
-        }
     }
 
     private class ThreadPoolTask implements Runnable {

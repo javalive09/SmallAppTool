@@ -106,7 +106,7 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
         loading = (FrameLayout) findViewById(R.id.pbview);
         appAdapter.setData(getAllAppInfos());
         appListView.setAdapter(appAdapter);
-        appListView.setOnScrollListener(appAdapter);
+//        appListView.setOnScrollListener(appAdapter);
     }
 
     @Override
