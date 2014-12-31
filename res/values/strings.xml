@@ -2,11 +2,9 @@
 <resources>
 
     <string name="app_name">AppTool</string>
-    <string name="install">install</string>
     <string name="uninstall">uninstall</string>
     <string name="action_refresh">refresh</string>
     <string name="action_help">help</string>
-    <string name="action_clear_all">clear</string>
     <string name="action_about">about</string>
     <string name="action_feedback">feedback</string>
     <string name="action_help_msg">simple app for clear cache, uninstall app, force stop app</string>
