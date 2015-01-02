@@ -8,28 +8,13 @@
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:animationCache="true"
+        android:descendantFocusability="blocksDescendants"
         android:divider="@null"
         android:fadingEdge="none"
         android:fastScrollEnabled="true"
         android:layoutAnimation="@anim/animationlayout"
         android:scrollbarAlwaysDrawVerticalTrack="true"
-        android:descendantFocusability= "blocksDescendants"
         android:scrollbarStyle="outsideInset"
         android:scrollingCache="false" />
-
-    <FrameLayout
-        android:id="@+id/pbview"
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        android:visibility="invisible"
-        android:background="#88000000" >
-
-        <ProgressBar
-            android:id="@+id/pb"
-            style="?android:attr/progressBarStyleSmall"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center" />
-    </FrameLayout>
 
 </merge>
