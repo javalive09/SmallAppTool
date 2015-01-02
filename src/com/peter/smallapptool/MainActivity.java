@@ -10,14 +10,16 @@ import com.peter.smallapptool.R;
 import com.peter.smallapptool.AppAdapter.AppInfo;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.app.ActivityManager.RunningAppProcessInfo;
+import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.content.SharedPreferences.Editor;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -26,20 +28,21 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.os.MessageQueue.IdleHandler;
+import android.os.Vibrator;
 import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.View.OnLongClickListener;
 import android.view.ViewConfiguration;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ListView;
-import android.widget.Toast;
 
 public class MainActivity extends Activity implements OnClickListener,
-		OnItemClickListener, OnItemLongClickListener {
+		OnItemClickListener, OnItemLongClickListener, OnLongClickListener {
 
 	private AlertDialog mDialog;
 	private ProgressDialog mLoadingDialog;
@@ -47,6 +50,7 @@ public class MainActivity extends Activity implements OnClickListener,
 	private AppAdapter<AppInfo> appAdapter;
 	private static final String TOP_APP = "top_app";
 	private BroadcastReceiver forceStopReceiver;
+	private boolean isPerformLongClick;
 	private ListView appListView;
 
 	@Override
@@ -62,26 +66,64 @@ public class MainActivity extends Activity implements OnClickListener,
 	 * @return
 	 */
 	private List<AppInfo> getAllAppInfos() {
+		ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+		List<RunningAppProcessInfo> runningApps = am.getRunningAppProcesses();
+
 		PackageManager pm = getPackageManager();
 		List<ApplicationInfo> appList = pm.getInstalledApplications(0);
-		List<AppInfo> runningApps = new ArrayList<AppInfo>(appList.size());
-		SharedPreferences sp = getSharedPreferences(TOP_APP, MODE_PRIVATE);
-		String topApp = sp.getString(TOP_APP, "com.qihoo.cleandroid_cn");
-		for (ApplicationInfo info : appList) {
+		List<AppInfo> allNoSystemApps = new ArrayList<AppInfo>(appList.size());
+		List<AppInfo> allNoSystemApps_run = new ArrayList<AppInfo>(
+				allNoSystemApps.size());
+		List<AppInfo> allNoSystemApps_run_lock = new ArrayList<AppInfo>(
+				allNoSystemApps.size());
+
+		for (ApplicationInfo info : appList) {// 非系统APP
 			if (info != null && !isSystemApp(info)
 					&& !info.packageName.equals(getPackageName())) {
 				AppInfo inf = new AppInfo();
 				inf.packageName = info.packageName;
 				inf.appName = info.loadLabel(pm).toString();
-				if (inf.packageName.equals(topApp)) {
-					runningApps.add(0, inf);
-				} else {
-					runningApps.add(inf);
-				}
+				allNoSystemApps.add(inf);
+				allNoSystemApps_run.add(inf);
+				allNoSystemApps_run_lock.add(inf);
 			}
 		}
 
-		return runningApps;
+		for (AppInfo info : allNoSystemApps) {// 将运行的APP放在第1位
+			if (isRunndingApp(info, runningApps)) {
+				info.isRunning = true;
+				allNoSystemApps_run.remove(info);
+				allNoSystemApps_run.add(0, info);
+				allNoSystemApps_run_lock.remove(info);
+				allNoSystemApps_run_lock.add(0, info);
+			}
+		}
+
+		SharedPreferences sp = getSharedPreferences(TOP_APP, MODE_PRIVATE);
+		for (AppInfo info : allNoSystemApps_run) {// 将运行的APP中lock的放到第1位
+			Boolean isLocked = sp.getBoolean(info.packageName, false);
+			info.isLocked = isLocked;
+			if (info.isRunning && info.isLocked) {
+				allNoSystemApps_run_lock.remove(info);
+				allNoSystemApps_run_lock.add(0, info);
+			}
+		}
+
+		return allNoSystemApps_run_lock;
+	}
+
+	private boolean isRunndingApp(AppInfo info,
+			List<RunningAppProcessInfo> runningApps) {
+		for (RunningAppProcessInfo runInfo : runningApps) {
+			String[] pkgs = runInfo.pkgList;
+			for (String pagName : pkgs) {
+				if (!TextUtils.isEmpty(pagName)
+						&& pagName.equals(info.packageName)) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private boolean isSystemApp(ApplicationInfo appInfo) {
@@ -111,7 +153,7 @@ public class MainActivity extends Activity implements OnClickListener,
 		}
 		return mLoadingDialog;
 	}
-	
+
 	private void getOverflowMenu() {
 		try {
 			ViewConfiguration config = ViewConfiguration.get(this);
@@ -129,11 +171,11 @@ public class MainActivity extends Activity implements OnClickListener,
 	private void relodData() {
 		setContentView(R.layout.splash);
 		Looper.myQueue().addIdleHandler(new IdleHandler() {
-			
+
 			@Override
 			public boolean queueIdle() {
 				final List<AppInfo> info = getAllAppInfos();
-				if(appAdapter == null) {
+				if (appAdapter == null) {
 					appAdapter = new AppAdapter<AppInfo>(MainActivity.this);
 				}
 				setContentView(R.layout.main);
@@ -145,7 +187,7 @@ public class MainActivity extends Activity implements OnClickListener,
 				return false;
 			}
 		});
-		
+
 	}
 
 	@Override
@@ -202,11 +244,9 @@ public class MainActivity extends Activity implements OnClickListener,
 				try {
 					ProcessUtils.executeCommand(cmd, 2000);
 				} catch (IOException e) {
-					e.printStackTrace();
+					showForceStopView(info);
 				} catch (InterruptedException e) {
-					e.printStackTrace();
 				} catch (TimeoutException e) {
-					e.printStackTrace();
 				}
 				return null;
 			}
@@ -233,12 +273,42 @@ public class MainActivity extends Activity implements OnClickListener,
 				try {
 					ProcessUtils.executeCommand(cmd, 2000);
 				} catch (IOException e) {
-					e.printStackTrace();
+					showForceStopView(info);
 				} catch (InterruptedException e) {
-					e.printStackTrace();
 				} catch (TimeoutException e) {
-					e.printStackTrace();
 				}
+				return null;
+			}
+
+		}.execute();
+	}
+
+	private void forceStop(final AppInfo info) {
+		new AsyncTask<Void, Void, Void>() {
+
+			@Override
+			protected void onPreExecute() {
+				getLoadingDialog().show();
+			}
+
+			@Override
+			protected void onPostExecute(Void result) {
+				info.mDeleteAnim = true;
+				appAdapter.notifyDataSetChanged();
+				getLoadingDialog().hide();
+			}
+
+			@Override
+			protected Void doInBackground(Void... params) {
+				String cmd = "am force-stop " + info.packageName + " \n";
+				try {
+					ProcessUtils.executeCommand(cmd, 2000);
+				} catch (IOException e) {
+					showForceStopView(info);
+				} catch (InterruptedException e) {
+				} catch (TimeoutException e) {
+				}
+
 				return null;
 			}
 
@@ -292,6 +362,11 @@ public class MainActivity extends Activity implements OnClickListener,
 		case R.id.clearcache:
 			clearCache(info);
 			break;
+		case R.id.kill_lock:
+			if(!info.isLocked) {
+				forceStop(info);
+			}
+			break;
 		default:
 			break;
 		}
@@ -300,30 +375,26 @@ public class MainActivity extends Activity implements OnClickListener,
 	@Override
 	public void onItemClick(AdapterView<?> parent, View view, int position,
 			long id) {
-		AppInfo info = appAdapter.getItem(position);
-		info.mShowOperation = !info.mShowOperation;
-		appAdapter.notifyDataSetChanged();
+		if(isPerformLongClick) {
+			isPerformLongClick = false;
+		}else {
+			AppInfo info = appAdapter.getItem(position);
+			info.mShowOperation = !info.mShowOperation;
+			appAdapter.notifyDataSetChanged();
+		}
 	}
 
 	@Override
 	public boolean onItemLongClick(AdapterView<?> parent, View view,
 			int position, long id) {
-		AppInfo info = appAdapter.getItem(position);
-		SharedPreferences sp = getSharedPreferences(TOP_APP, MODE_PRIVATE);
-		Editor editor = sp.edit();
-		editor.putString(TOP_APP, info.packageName);
-		editor.commit();
-		Toast.makeText(this, "top app : " + info.packageName, Toast.LENGTH_LONG).show();
-		appAdapter.getInfos().remove(info);
-		appAdapter.getInfos().add(0, info);;
-		appAdapter.notifyDataSetInvalidated();
-		return true;
+
+		return false;
 	}
-	
+
 	private class MyReceiver extends BroadcastReceiver {
-		
+
 		AppInfo mInfo;
-		
+
 		public MyReceiver(AppInfo info) {
 			mInfo = info;
 		}
@@ -340,13 +411,33 @@ public class MainActivity extends Activity implements OnClickListener,
 					String action = intent.getAction();
 					if (Intent.ACTION_PACKAGE_RESTARTED.equals(action)) {
 						finishSetting();
-					}else if(Intent.ACTION_PACKAGE_REMOVED.equals(action)) {
+					} else if (Intent.ACTION_PACKAGE_REMOVED.equals(action)) {
 						mInfo.mDeleteAnim = true;
 					}
 				}
 			}
 		}
-		
+
+	}
+	
+	@Override
+	public boolean onLongClick(View v) {
+		View parent = (View) v.getParent().getParent();
+		AppInfo info = (AppInfo) parent.getTag(R.id.appinfo);
+		switch (v.getId()) {
+		case R.id.kill_lock:
+			if (info.isRunning) {
+				info.isLocked = !info.isLocked;
+				SharedPreferences sp = getSharedPreferences(TOP_APP,
+						MODE_PRIVATE);
+				sp.edit().putBoolean(info.packageName, info.isLocked).commit();
+				appAdapter.notifyDataSetInvalidated();
+				Vibrator mVibrator01 = (Vibrator) getApplication().getSystemService(Service.VIBRATOR_SERVICE);
+				mVibrator01.vibrate(100);
+				isPerformLongClick = true;
+			}
+		}
+		return false;
 	}
 
 }

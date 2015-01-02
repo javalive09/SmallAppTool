@@ -8,10 +8,10 @@
     <!-- 中间的背景色 -->
     <solid android:color="#e4e4e4" />
     <!-- 设置四个角的角度 -->
-    <corners
-        android:bottomLeftRadius="10dp"
-        android:bottomRightRadius="10dp"
-        android:topLeftRadius="10dp"
-        android:topRightRadius="10dp" />
+    <!-- <corners -->
+    <!-- android:bottomLeftRadius="10dp" -->
+    <!-- android:bottomRightRadius="10dp" -->
+    <!-- android:topLeftRadius="10dp" -->
+    <!-- android:topRightRadius="10dp" /> -->
 
 </shape>

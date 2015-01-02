@@ -36,6 +36,18 @@
             android:layout_margin="5dp"
             android:gravity="center"
             android:textColor="@android:color/black" />
+
+        <ImageView
+            android:id="@+id/kill_lock"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:contentDescription="@string/app_name"
+            android:focusable="false"
+            android:scaleType="center"
+            android:src="@drawable/running" />
     </RelativeLayout>
 
     <LinearLayout

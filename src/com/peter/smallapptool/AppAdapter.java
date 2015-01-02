@@ -120,6 +120,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
             cache.clearCache = (Button) convertView.findViewById(R.id.clearcache);
             cache.uninstall = (Button) convertView.findViewById(R.id.uninstall);
             cache.detail = (Button) convertView.findViewById(R.id.detail);
+            cache.app_state = (ImageView) convertView.findViewById(R.id.kill_lock);
             cache.operation = (LinearLayout) convertView.findViewById(R.id.operation);
             convertView.setTag(cache);
         } else {
@@ -144,34 +145,50 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
             bmIcon = mDefaultDrawable.getBitmap();
             thread_pool_executor.execute(new ThreadPoolTask(cache.app_icon, inf));
         }
+        
         cache.app_icon.setImageBitmap(bmIcon);
         cache.app_name.setText(info.appName);
         cache.clearCache.setOnClickListener(mAct);
         cache.uninstall.setOnClickListener(mAct);
         cache.detail.setOnClickListener(mAct);
+        
+        if(info.isRunning) {
+        	cache.app_state.setVisibility(View.VISIBLE);
+        	cache.app_state.setOnLongClickListener(mAct);
+        	cache.app_state.setOnClickListener(mAct);
+        	if(info.isLocked) {
+        		cache.app_state.setImageResource(R.drawable.lock);
+        	}else {
+        		cache.app_state.setImageResource(R.drawable.running);
+        	}
+        }else {
+        	cache.app_state.setVisibility(View.GONE);
+        }
+        
         if (info.mShowOperation) {
             cache.operation.setVisibility(View.VISIBLE);
-            if(info.mDeleteAnim) {
-            	info.mDeleteAnim = false;
-            	Animation anim = AnimationUtils.loadAnimation(mAct, R.anim.slide_left_out);
-            	convertView.startAnimation(anim);
-            	anim.setAnimationListener(new AnimationListener() {
-					
-					@Override
-					public void onAnimationStart(Animation animation) {}
-					
-					@Override
-					public void onAnimationRepeat(Animation animation) {}
-					
-					@Override
-					public void onAnimationEnd(Animation animation) {
-						mAppInfos.remove(info);
-						notifyDataSetChanged();
-					}
-				});
-            }
         } else {
             cache.operation.setVisibility(View.GONE);
+        }
+        
+        if(info.mDeleteAnim) {
+        	info.mDeleteAnim = false;
+        	Animation anim = AnimationUtils.loadAnimation(mAct, R.anim.slide_left_out);
+        	convertView.startAnimation(anim);
+        	anim.setAnimationListener(new AnimationListener() {
+				
+				@Override
+				public void onAnimationStart(Animation animation) {}
+				
+				@Override
+				public void onAnimationRepeat(Animation animation) {}
+				
+				@Override
+				public void onAnimationEnd(Animation animation) {
+					mAppInfos.remove(info);
+					notifyDataSetChanged();
+				}
+			});
         }
 
         return convertView;
@@ -219,6 +236,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
 
     public static class ViewCache {
         ImageView app_icon;
+        ImageView app_state;
         TextView app_name;
         Button uninstall;
         Button detail;
@@ -231,5 +249,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         public String packageName;
         public boolean mShowOperation;
         public boolean mDeleteAnim;
+        public boolean isRunning;
+        public boolean isLocked;
     }
 }
