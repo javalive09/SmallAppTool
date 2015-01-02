@@ -152,6 +152,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         if (info.mShowOperation) {
             cache.operation.setVisibility(View.VISIBLE);
             if(info.mDeleteAnim) {
+            	info.mDeleteAnim = false;
             	Animation anim = AnimationUtils.loadAnimation(mAct, R.anim.slide_left_out);
             	convertView.startAnimation(anim);
             	anim.setAnimationListener(new AnimationListener() {
