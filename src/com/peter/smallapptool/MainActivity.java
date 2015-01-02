@@ -24,6 +24,8 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Looper;
+import android.os.MessageQueue.IdleHandler;
 import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -51,7 +53,6 @@ public class MainActivity extends Activity implements OnClickListener,
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		getOverflowMenu();
-		appAdapter = new AppAdapter<AppInfo>(MainActivity.this);
 		relodData();
 	}
 
@@ -97,6 +98,7 @@ public class MainActivity extends Activity implements OnClickListener,
 		if (forceStopReceiver != null) {
 			unregisterReceiver(forceStopReceiver);
 			forceStopReceiver = null;
+			appAdapter.notifyDataSetChanged();
 		}
 	}
 
@@ -109,14 +111,41 @@ public class MainActivity extends Activity implements OnClickListener,
 		}
 		return mLoadingDialog;
 	}
+	
+	private void getOverflowMenu() {
+		try {
+			ViewConfiguration config = ViewConfiguration.get(this);
+			Field menuKeyField = ViewConfiguration.class
+					.getDeclaredField("sHasPermanentMenuKey");
+			if (menuKeyField != null) {
+				menuKeyField.setAccessible(true);
+				menuKeyField.setBoolean(config, false);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 
 	private void relodData() {
-		setContentView(R.layout.main);
-		appListView = (ListView) findViewById(R.id.app_list);
-		appListView.setOnItemClickListener(this);
-		appListView.setOnItemLongClickListener(this);
-		appAdapter.setData(getAllAppInfos());
-		appListView.setAdapter(appAdapter);
+		setContentView(R.layout.splash);
+		Looper.myQueue().addIdleHandler(new IdleHandler() {
+			
+			@Override
+			public boolean queueIdle() {
+				final List<AppInfo> info = getAllAppInfos();
+				if(appAdapter == null) {
+					appAdapter = new AppAdapter<AppInfo>(MainActivity.this);
+				}
+				setContentView(R.layout.main);
+				appListView = (ListView) findViewById(R.id.app_list);
+				appListView.setOnItemClickListener(MainActivity.this);
+				appListView.setOnItemLongClickListener(MainActivity.this);
+				appAdapter.setData(info);
+				appListView.setAdapter(appAdapter);
+				return false;
+			}
+		});
+		
 	}
 
 	@Override
@@ -152,21 +181,7 @@ public class MainActivity extends Activity implements OnClickListener,
 		return super.onOptionsItemSelected(item);
 	}
 
-	private void getOverflowMenu() {
-		try {
-			ViewConfiguration config = ViewConfiguration.get(this);
-			Field menuKeyField = ViewConfiguration.class
-					.getDeclaredField("sHasPermanentMenuKey");
-			if (menuKeyField != null) {
-				menuKeyField.setAccessible(true);
-				menuKeyField.setBoolean(config, false);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void uninstall(final String packageName) {
+	private void uninstall(final AppInfo info) {
 		new AsyncTask<Void, Void, Void>() {
 
 			@Override
@@ -177,12 +192,13 @@ public class MainActivity extends Activity implements OnClickListener,
 			@Override
 			protected void onPostExecute(Void result) {
 				getLoadingDialog().hide();
-				relodData();
+				info.mDeleteAnim = true;
+				appAdapter.notifyDataSetChanged();
 			}
 
 			@Override
 			protected Void doInBackground(Void... params) {
-				String cmd = "pm uninstall " + packageName + " \n";
+				String cmd = "pm uninstall " + info.packageName + " \n";
 				try {
 					ProcessUtils.executeCommand(cmd, 2000);
 				} catch (IOException e) {
@@ -198,7 +214,7 @@ public class MainActivity extends Activity implements OnClickListener,
 		}.execute();
 	}
 
-	private void clearCache(final String packageName) {
+	private void clearCache(final AppInfo info) {
 		new AsyncTask<Void, Void, Void>() {
 
 			@Override
@@ -209,12 +225,11 @@ public class MainActivity extends Activity implements OnClickListener,
 			@Override
 			protected void onPostExecute(Void result) {
 				getLoadingDialog().hide();
-				relodData();
 			}
 
 			@Override
 			protected Void doInBackground(Void... params) {
-				String cmd = "pm clear " + packageName + " \n";
+				String cmd = "pm clear " + info.packageName + " \n";
 				try {
 					ProcessUtils.executeCommand(cmd, 2000);
 				} catch (IOException e) {
@@ -230,45 +245,28 @@ public class MainActivity extends Activity implements OnClickListener,
 		}.execute();
 	}
 
-	private void showForceStopView(String packageName) {
+	private void showForceStopView(AppInfo info) {
 		int version = Build.VERSION.SDK_INT;
 		Intent intent = new Intent();
 		if (version >= 9) {
 			intent.setAction("android.settings.APPLICATION_DETAILS_SETTINGS");
-			Uri uri = Uri.fromParts("package", packageName, null);
+			Uri uri = Uri.fromParts("package", info.packageName, null);
 			intent.setData(uri);
 		} else {
 			final String appPkgName = "pkg";
 			intent.setAction(Intent.ACTION_VIEW);
 			intent.setClassName("com.android.settings",
 					"com.android.settings.InstalledAppDetails");
-			intent.putExtra(appPkgName, packageName);
+			intent.putExtra(appPkgName, info.packageName);
 		}
 
-		forceStopReceiver = new BroadcastReceiver() {
-			@Override
-			public void onReceive(Context context, Intent intent) {
-				Uri data = intent.getData();
-				if (data != null) {
-					String str = data.getSchemeSpecificPart();
-					if (!TextUtils.isEmpty(forecStopPackageName)
-							&& !TextUtils.isEmpty(str)
-							&& str.equals(forecStopPackageName)) {
-
-						String action = intent.getAction();
-						if ("android.intent.action.PACKAGE_RESTARTED"
-								.equals(action)) {
-							finishSetting();
-						}
-					}
-				}
-			}
-		};
+		forceStopReceiver = new MyReceiver(info);
 		IntentFilter filter = new IntentFilter();
 		filter.addAction(Intent.ACTION_PACKAGE_RESTARTED);
+		filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
 		filter.addDataScheme("package");
 		registerReceiver(forceStopReceiver, filter);
-		forecStopPackageName = packageName;
+		forecStopPackageName = info.packageName;
 		startActivity(intent);
 	}
 
@@ -284,16 +282,15 @@ public class MainActivity extends Activity implements OnClickListener,
 	public void onClick(View v) {
 		View parent = (View) v.getParent().getParent();
 		AppInfo info = (AppInfo) parent.getTag(R.id.appinfo);
-		String packageName = info.packageName;
 		switch (v.getId()) {
 		case R.id.uninstall:
-			uninstall(packageName);
+			uninstall(info);
 			break;
 		case R.id.detail:
-			showForceStopView(packageName);
+			showForceStopView(info);
 			break;
 		case R.id.clearcache:
-			clearCache(packageName);
+			clearCache(info);
 			break;
 		default:
 			break;
@@ -316,10 +313,40 @@ public class MainActivity extends Activity implements OnClickListener,
 		Editor editor = sp.edit();
 		editor.putString(TOP_APP, info.packageName);
 		editor.commit();
-		Toast.makeText(this, "top app : " + info.packageName, Toast.LENGTH_LONG)
-				.show();
-		relodData();
+		Toast.makeText(this, "top app : " + info.packageName, Toast.LENGTH_LONG).show();
+		appAdapter.getInfos().remove(info);
+		appAdapter.getInfos().add(0, info);;
+		appAdapter.notifyDataSetInvalidated();
 		return true;
+	}
+	
+	private class MyReceiver extends BroadcastReceiver {
+		
+		AppInfo mInfo;
+		
+		public MyReceiver(AppInfo info) {
+			mInfo = info;
+		}
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			Uri data = intent.getData();
+			if (data != null) {
+				String str = data.getSchemeSpecificPart();
+				if (!TextUtils.isEmpty(forecStopPackageName)
+						&& !TextUtils.isEmpty(str)
+						&& str.equals(forecStopPackageName)) {
+
+					String action = intent.getAction();
+					if (Intent.ACTION_PACKAGE_RESTARTED.equals(action)) {
+						finishSetting();
+					}else if(Intent.ACTION_PACKAGE_REMOVED.equals(action)) {
+						mInfo.mDeleteAnim = true;
+					}
+				}
+			}
+		}
+		
 	}
 
 }

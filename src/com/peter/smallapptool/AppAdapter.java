@@ -19,11 +19,15 @@ import android.graphics.drawable.Drawable;
 import android.support.v4.util.LruCache;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.Animation.AnimationListener;
+import android.view.animation.AnimationUtils;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
 import com.peter.smallapptool.R;
 
 public class AppAdapter<AppInfo> extends BaseAdapter {
@@ -102,7 +106,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         // 获取数据
-        AppInfo info = (AppInfo) getItem(position);
+        final AppInfo info = (AppInfo) getItem(position);
 
         // 获取View
         ViewCache cache = null;
@@ -147,6 +151,24 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         cache.detail.setOnClickListener(mAct);
         if (info.mShowOperation) {
             cache.operation.setVisibility(View.VISIBLE);
+            if(info.mDeleteAnim) {
+            	Animation anim = AnimationUtils.loadAnimation(mAct, R.anim.slide_left_out);
+            	convertView.startAnimation(anim);
+            	anim.setAnimationListener(new AnimationListener() {
+					
+					@Override
+					public void onAnimationStart(Animation animation) {}
+					
+					@Override
+					public void onAnimationRepeat(Animation animation) {}
+					
+					@Override
+					public void onAnimationEnd(Animation animation) {
+						mAppInfos.remove(info);
+						notifyDataSetChanged();
+					}
+				});
+            }
         } else {
             cache.operation.setVisibility(View.GONE);
         }
@@ -207,5 +229,6 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         public String appName;
         public String packageName;
         public boolean mShowOperation;
+        public boolean mDeleteAnim;
     }
 }
