@@ -168,17 +168,26 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         case AppInfo.NO_RUNNING:
         	cache.app_state.setVisibility(View.GONE);
         	break;
-        }
-        
-        if (info.mShowOperation) {
-            cache.operation.setVisibility(View.VISIBLE);
-        } else {
-            cache.operation.setVisibility(View.GONE);
-        }
-        
-        if(info.mDeleteAnim) {
-        	info.mDeleteAnim = false;
+        case AppInfo.UNINSTALLED:
         	Animation anim = AnimationUtils.loadAnimation(mAct, R.anim.slide_left_out);
+        	convertView.startAnimation(anim);
+        	anim.setAnimationListener(new AnimationListener() {
+				
+				@Override
+				public void onAnimationStart(Animation animation) {}
+				
+				@Override
+				public void onAnimationRepeat(Animation animation) {}
+				
+				@Override
+				public void onAnimationEnd(Animation animation) {
+					mAppInfos.remove(info);
+					notifyDataSetChanged();
+				}
+			});
+        	break;
+        case AppInfo.KILLING:
+        	anim = AnimationUtils.loadAnimation(mAct, R.anim.slide_left_out);
         	convertView.startAnimation(anim);
         	anim.setAnimationListener(new AnimationListener() {
 				
@@ -196,8 +205,15 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
 					notifyDataSetChanged();
 				}
 			});
+        	break;
         }
-
+        
+        if (info.mShowOperation) {
+            cache.operation.setVisibility(View.VISIBLE);
+        } else {
+            cache.operation.setVisibility(View.GONE);
+        }
+        
         return convertView;
     }
 
@@ -252,13 +268,14 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
     }
 
     public static class AppInfo {
-    	public static final int LOCKED = 0;
-    	public static final int RUNNING = 1;
-    	public static final int NO_RUNNING = 2;
+    	public static final int LOCKED = 1;
+    	public static final int RUNNING = 2;
+    	public static final int NO_RUNNING = 3;
+    	public static final int UNINSTALLED = 4;
+    	public static final int KILLING = 5;
         public String appName;
         public String packageName;
         public boolean mShowOperation;
-        public boolean mDeleteAnim;
         public int state;
     }
 }

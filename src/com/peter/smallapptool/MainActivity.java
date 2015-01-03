@@ -28,11 +28,11 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Debug;
 import android.os.Looper;
 import android.os.MessageQueue.IdleHandler;
 import android.os.Vibrator;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -43,6 +43,7 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.ListView;
+import android.widget.Toast;
 
 public class MainActivity extends Activity implements OnClickListener,
 		OnItemClickListener, OnItemLongClickListener, OnLongClickListener {
@@ -52,6 +53,7 @@ public class MainActivity extends Activity implements OnClickListener,
 	private String forecStopPackageName;
 	private AppAdapter<AppInfo> appAdapter;
 	private static final String TOP_APP = "top_app";
+	private static final String LOCKED_APP = "locked_app";
 	private BroadcastReceiver forceStopReceiver;
 	private boolean isPerformLongClick;
 	private ListView appListView;
@@ -93,16 +95,27 @@ public class MainActivity extends Activity implements OnClickListener,
 			}
 		}
 
-		SharedPreferences sp = getSharedPreferences(TOP_APP, MODE_PRIVATE);
+		SharedPreferences spLock = getSharedPreferences(LOCKED_APP, MODE_PRIVATE);
 		for (AppInfo info : allNoSystemApps) {// 将运行的APP中lock的放到第1位
-			int state = sp.getInt(info.packageName, AppInfo.NO_RUNNING);
+			int state = spLock.getInt(info.packageName, AppInfo.NO_RUNNING);
 			if (state == AppInfo.LOCKED) {
 				info.state = AppInfo.LOCKED;
 			}
 		}
-
+		
 		Collections.sort(allNoSystemApps, AppComparator);
-
+		
+		SharedPreferences spTop = getSharedPreferences(TOP_APP, MODE_PRIVATE);
+		for (AppInfo info : allNoSystemApps) {// 将运行的APP中top的放到第1位
+			String topPackageName = spTop.getString(TOP_APP, "");
+			if (!TextUtils.isEmpty(topPackageName) 
+					&& topPackageName.equals(info.packageName)) {
+				allNoSystemApps.remove(info);
+				allNoSystemApps.add(0, info);
+				break;
+			}
+		}
+		
 		return allNoSystemApps;
 	}
 
@@ -181,8 +194,10 @@ public class MainActivity extends Activity implements OnClickListener,
 
 			@Override
 			public boolean queueIdle() {
-				Debug.startMethodTracing("peter");
+				long time = System.currentTimeMillis();
 				final List<AppInfo> info = getAllAppInfos();
+				long delta = System.currentTimeMillis() - time;
+				Log.i("peter", "delta time = " + delta);
 				if (appAdapter == null) {
 					appAdapter = new AppAdapter<AppInfo>(MainActivity.this);
 				}
@@ -192,7 +207,6 @@ public class MainActivity extends Activity implements OnClickListener,
 				appListView.setOnItemLongClickListener(MainActivity.this);
 				appAdapter.setData(info);
 				appListView.setAdapter(appAdapter);
-				Debug.stopMethodTracing();
 				return false;
 			}
 		});
@@ -243,7 +257,7 @@ public class MainActivity extends Activity implements OnClickListener,
 			@Override
 			protected void onPostExecute(Void result) {
 				getLoadingDialog().dismiss();
-				info.mDeleteAnim = true;
+				info.state = AppInfo.UNINSTALLED;
 				appAdapter.notifyDataSetChanged();
 			}
 
@@ -253,7 +267,9 @@ public class MainActivity extends Activity implements OnClickListener,
 				try {
 					ProcessUtils.executeCommand(cmd, 2000);
 				} catch (IOException e) {
-					showForceStopView(info);
+					Uri uri=Uri.parse("package:"+info.packageName);
+					Intent intent=new Intent(Intent.ACTION_DELETE,uri);
+					startActivity(intent);
 				} catch (InterruptedException e) {
 				} catch (TimeoutException e) {
 				}
@@ -302,7 +318,7 @@ public class MainActivity extends Activity implements OnClickListener,
 
 			@Override
 			protected void onPostExecute(Void result) {
-				info.mDeleteAnim = true;
+				info.state = AppInfo.KILLING;
 				appAdapter.notifyDataSetChanged();
 				getLoadingDialog().dismiss();
 			}
@@ -388,16 +404,26 @@ public class MainActivity extends Activity implements OnClickListener,
 			isPerformLongClick = false;
 		} else {
 			AppInfo info = appAdapter.getItem(position);
-			info.mShowOperation = !info.mShowOperation;
-			appAdapter.notifyDataSetChanged();
+			if(info.state != AppInfo.LOCKED) {
+				info.mShowOperation = !info.mShowOperation;
+				appAdapter.notifyDataSetChanged();
+			}
 		}
 	}
 
 	@Override
 	public boolean onItemLongClick(AdapterView<?> parent, View view,
 			int position, long id) {
-
-		return false;
+		if(isPerformLongClick) {
+			isPerformLongClick = false;
+		}else {
+			AppInfo info = appAdapter.getItem(position);
+			SharedPreferences sp = getSharedPreferences(TOP_APP, MODE_PRIVATE);
+			sp.edit().putString(TOP_APP, info.packageName).commit();
+			Toast.makeText(getApplicationContext(), "Top App : " + info.packageName, Toast.LENGTH_LONG).show();
+			relodData();
+		}
+		return true;
 	}
 
 	private class MyReceiver extends BroadcastReceiver {
@@ -421,7 +447,7 @@ public class MainActivity extends Activity implements OnClickListener,
 					if (Intent.ACTION_PACKAGE_RESTARTED.equals(action)) {
 						finishSetting();
 					} else if (Intent.ACTION_PACKAGE_REMOVED.equals(action)) {
-						mInfo.mDeleteAnim = true;
+						mInfo.state = AppInfo.UNINSTALLED;
 					}
 				}
 			}
@@ -435,19 +461,20 @@ public class MainActivity extends Activity implements OnClickListener,
 		AppInfo info = (AppInfo) parent.getTag(R.id.appinfo);
 		switch (v.getId()) {
 		case R.id.kill_lock:
+			isPerformLongClick = true;
 			if (info.state == AppInfo.RUNNING) {
 				info.state = AppInfo.LOCKED;
 			} else if (info.state == AppInfo.LOCKED) {
 				info.state = AppInfo.RUNNING;
 			}
 
-			SharedPreferences sp = getSharedPreferences(TOP_APP, MODE_PRIVATE);
+			SharedPreferences sp = getSharedPreferences(LOCKED_APP, MODE_PRIVATE);
 			sp.edit().putInt(info.packageName, info.state).commit();
 			appAdapter.notifyDataSetInvalidated();
 			Vibrator mVibrator01 = (Vibrator) getApplication()
 					.getSystemService(Service.VIBRATOR_SERVICE);
 			mVibrator01.vibrate(100);
-			isPerformLongClick = true;
+			return true;
 		}
 		return false;
 	}
