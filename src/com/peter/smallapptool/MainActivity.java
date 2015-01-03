@@ -247,7 +247,7 @@ public class MainActivity extends Activity implements OnClickListener,
 	}
 
 	private void uninstall(final AppInfo info) {
-		new AsyncTask<Void, Void, Void>() {
+		new AsyncTask<Void, Void, Boolean>() {
 
 			@Override
 			protected void onPreExecute() {
@@ -255,25 +255,30 @@ public class MainActivity extends Activity implements OnClickListener,
 			}
 
 			@Override
-			protected void onPostExecute(Void result) {
+			protected void onPostExecute(Boolean result) {
 				getLoadingDialog().dismiss();
-				info.state = AppInfo.UNINSTALLED;
-				appAdapter.notifyDataSetChanged();
+				if(result) {
+					info.state = AppInfo.UNINSTALLED;
+					appAdapter.notifyDataSetChanged();
+				}
 			}
 
 			@Override
-			protected Void doInBackground(Void... params) {
+			protected Boolean doInBackground(Void... params) {
+				boolean result = true;
 				String cmd = "pm uninstall " + info.packageName + " \n";
 				try {
 					ProcessUtils.executeCommand(cmd, 2000);
 				} catch (IOException e) {
+					result = false;
+					registReceiver(info);
 					Uri uri=Uri.parse("package:"+info.packageName);
 					Intent intent=new Intent(Intent.ACTION_DELETE,uri);
 					startActivity(intent);
 				} catch (InterruptedException e) {
 				} catch (TimeoutException e) {
 				}
-				return null;
+				return result;
 			}
 
 		}.execute();
@@ -309,7 +314,7 @@ public class MainActivity extends Activity implements OnClickListener,
 	}
 
 	private void forceStop(final AppInfo info) {
-		new AsyncTask<Void, Void, Void>() {
+		new AsyncTask<Void, Void, Boolean>() {
 
 			@Override
 			protected void onPreExecute() {
@@ -317,24 +322,28 @@ public class MainActivity extends Activity implements OnClickListener,
 			}
 
 			@Override
-			protected void onPostExecute(Void result) {
-				info.state = AppInfo.KILLING;
-				appAdapter.notifyDataSetChanged();
+			protected void onPostExecute(Boolean result) {
 				getLoadingDialog().dismiss();
+				if(result) {
+					info.state = AppInfo.KILLING;
+					appAdapter.notifyDataSetChanged();
+				}
 			}
 
 			@Override
-			protected Void doInBackground(Void... params) {
+			protected Boolean doInBackground(Void... params) {
+				boolean result = true;
 				String cmd = "am force-stop " + info.packageName + " \n";
 				try {
 					ProcessUtils.executeCommand(cmd, 2000);
 				} catch (IOException e) {
+					result = false;
 					showForceStopView(info);
 				} catch (InterruptedException e) {
 				} catch (TimeoutException e) {
 				}
 
-				return null;
+				return result;
 			}
 
 		}.execute();
@@ -354,17 +363,20 @@ public class MainActivity extends Activity implements OnClickListener,
 					"com.android.settings.InstalledAppDetails");
 			intent.putExtra(appPkgName, info.packageName);
 		}
+		registReceiver(info);
+		startActivity(intent);
+	}
 
+	private void registReceiver(AppInfo info) {
+		forecStopPackageName = info.packageName;
 		forceStopReceiver = new MyReceiver(info);
 		IntentFilter filter = new IntentFilter();
 		filter.addAction(Intent.ACTION_PACKAGE_RESTARTED);
 		filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
 		filter.addDataScheme("package");
 		registerReceiver(forceStopReceiver, filter);
-		forecStopPackageName = info.packageName;
-		startActivity(intent);
 	}
-
+	
 	private void finishSetting() {
 		Intent in = new Intent();
 		in.setClass(MainActivity.this, MainActivity.class);
@@ -446,6 +458,7 @@ public class MainActivity extends Activity implements OnClickListener,
 					String action = intent.getAction();
 					if (Intent.ACTION_PACKAGE_RESTARTED.equals(action)) {
 						finishSetting();
+						mInfo.state = AppInfo.KILLING;
 					} else if (Intent.ACTION_PACKAGE_REMOVED.equals(action)) {
 						mInfo.state = AppInfo.UNINSTALLED;
 					}

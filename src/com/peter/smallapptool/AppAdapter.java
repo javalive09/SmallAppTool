@@ -200,6 +200,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
 				@Override
 				public void onAnimationEnd(Animation animation) {
 					info.state = AppInfo.NO_RUNNING;
+					info.mShowOperation = false;
 					mAppInfos.remove(info);
 					mAppInfos.add(info);
 					notifyDataSetChanged();
