@@ -3,6 +3,8 @@ package com.peter.smallapptool;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
@@ -26,6 +28,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Debug;
 import android.os.Looper;
 import android.os.MessageQueue.IdleHandler;
 import android.os.Vibrator;
@@ -72,10 +75,6 @@ public class MainActivity extends Activity implements OnClickListener,
 		PackageManager pm = getPackageManager();
 		List<ApplicationInfo> appList = pm.getInstalledApplications(0);
 		List<AppInfo> allNoSystemApps = new ArrayList<AppInfo>(appList.size());
-		List<AppInfo> allNoSystemApps_run = new ArrayList<AppInfo>(
-				allNoSystemApps.size());
-		List<AppInfo> allNoSystemApps_run_lock = new ArrayList<AppInfo>(
-				allNoSystemApps.size());
 
 		for (ApplicationInfo info : appList) {// 非系统APP
 			if (info != null && !isSystemApp(info)
@@ -83,34 +82,42 @@ public class MainActivity extends Activity implements OnClickListener,
 				AppInfo inf = new AppInfo();
 				inf.packageName = info.packageName;
 				inf.appName = info.loadLabel(pm).toString();
+				inf.state = AppInfo.NO_RUNNING;
 				allNoSystemApps.add(inf);
-				allNoSystemApps_run.add(inf);
-				allNoSystemApps_run_lock.add(inf);
 			}
 		}
 
 		for (AppInfo info : allNoSystemApps) {// 将运行的APP放在第1位
 			if (isRunndingApp(info, runningApps)) {
-				info.isRunning = true;
-				allNoSystemApps_run.remove(info);
-				allNoSystemApps_run.add(0, info);
-				allNoSystemApps_run_lock.remove(info);
-				allNoSystemApps_run_lock.add(0, info);
+				info.state = AppInfo.RUNNING;
 			}
 		}
 
 		SharedPreferences sp = getSharedPreferences(TOP_APP, MODE_PRIVATE);
-		for (AppInfo info : allNoSystemApps_run) {// 将运行的APP中lock的放到第1位
-			Boolean isLocked = sp.getBoolean(info.packageName, false);
-			info.isLocked = isLocked;
-			if (info.isRunning && info.isLocked) {
-				allNoSystemApps_run_lock.remove(info);
-				allNoSystemApps_run_lock.add(0, info);
+		for (AppInfo info : allNoSystemApps) {// 将运行的APP中lock的放到第1位
+			int state = sp.getInt(info.packageName, AppInfo.NO_RUNNING);
+			if (state == AppInfo.LOCKED) {
+				info.state = AppInfo.LOCKED;
 			}
 		}
 
-		return allNoSystemApps_run_lock;
+		Collections.sort(allNoSystemApps, AppComparator);
+
+		return allNoSystemApps;
 	}
+
+	Comparator<AppInfo> AppComparator = new Comparator<AppInfo>() {
+
+		@Override
+		public int compare(AppInfo lhs, AppInfo rhs) {
+			if (lhs.state < rhs.state) {
+				return -1;
+			} else if (lhs.state > rhs.state) {
+				return 1;
+			}
+			return 0;
+		}
+	};
 
 	private boolean isRunndingApp(AppInfo info,
 			List<RunningAppProcessInfo> runningApps) {
@@ -174,6 +181,7 @@ public class MainActivity extends Activity implements OnClickListener,
 
 			@Override
 			public boolean queueIdle() {
+				Debug.startMethodTracing("peter");
 				final List<AppInfo> info = getAllAppInfos();
 				if (appAdapter == null) {
 					appAdapter = new AppAdapter<AppInfo>(MainActivity.this);
@@ -184,6 +192,7 @@ public class MainActivity extends Activity implements OnClickListener,
 				appListView.setOnItemLongClickListener(MainActivity.this);
 				appAdapter.setData(info);
 				appListView.setAdapter(appAdapter);
+				Debug.stopMethodTracing();
 				return false;
 			}
 		});
@@ -233,7 +242,7 @@ public class MainActivity extends Activity implements OnClickListener,
 
 			@Override
 			protected void onPostExecute(Void result) {
-				getLoadingDialog().hide();
+				getLoadingDialog().dismiss();
 				info.mDeleteAnim = true;
 				appAdapter.notifyDataSetChanged();
 			}
@@ -264,7 +273,7 @@ public class MainActivity extends Activity implements OnClickListener,
 
 			@Override
 			protected void onPostExecute(Void result) {
-				getLoadingDialog().hide();
+				getLoadingDialog().dismiss();
 			}
 
 			@Override
@@ -295,7 +304,7 @@ public class MainActivity extends Activity implements OnClickListener,
 			protected void onPostExecute(Void result) {
 				info.mDeleteAnim = true;
 				appAdapter.notifyDataSetChanged();
-				getLoadingDialog().hide();
+				getLoadingDialog().dismiss();
 			}
 
 			@Override
@@ -363,7 +372,7 @@ public class MainActivity extends Activity implements OnClickListener,
 			clearCache(info);
 			break;
 		case R.id.kill_lock:
-			if(!info.isLocked) {
+			if (info.state == AppInfo.RUNNING) {
 				forceStop(info);
 			}
 			break;
@@ -375,9 +384,9 @@ public class MainActivity extends Activity implements OnClickListener,
 	@Override
 	public void onItemClick(AdapterView<?> parent, View view, int position,
 			long id) {
-		if(isPerformLongClick) {
+		if (isPerformLongClick) {
 			isPerformLongClick = false;
-		}else {
+		} else {
 			AppInfo info = appAdapter.getItem(position);
 			info.mShowOperation = !info.mShowOperation;
 			appAdapter.notifyDataSetChanged();
@@ -419,23 +428,26 @@ public class MainActivity extends Activity implements OnClickListener,
 		}
 
 	}
-	
+
 	@Override
 	public boolean onLongClick(View v) {
 		View parent = (View) v.getParent().getParent();
 		AppInfo info = (AppInfo) parent.getTag(R.id.appinfo);
 		switch (v.getId()) {
 		case R.id.kill_lock:
-			if (info.isRunning) {
-				info.isLocked = !info.isLocked;
-				SharedPreferences sp = getSharedPreferences(TOP_APP,
-						MODE_PRIVATE);
-				sp.edit().putBoolean(info.packageName, info.isLocked).commit();
-				appAdapter.notifyDataSetInvalidated();
-				Vibrator mVibrator01 = (Vibrator) getApplication().getSystemService(Service.VIBRATOR_SERVICE);
-				mVibrator01.vibrate(100);
-				isPerformLongClick = true;
+			if (info.state == AppInfo.RUNNING) {
+				info.state = AppInfo.LOCKED;
+			} else if (info.state == AppInfo.LOCKED) {
+				info.state = AppInfo.RUNNING;
 			}
+
+			SharedPreferences sp = getSharedPreferences(TOP_APP, MODE_PRIVATE);
+			sp.edit().putInt(info.packageName, info.state).commit();
+			appAdapter.notifyDataSetInvalidated();
+			Vibrator mVibrator01 = (Vibrator) getApplication()
+					.getSystemService(Service.VIBRATOR_SERVICE);
+			mVibrator01.vibrate(100);
+			isPerformLongClick = true;
 		}
 		return false;
 	}

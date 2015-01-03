@@ -152,17 +152,22 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         cache.uninstall.setOnClickListener(mAct);
         cache.detail.setOnClickListener(mAct);
         
-        if(info.isRunning) {
+        switch(info.state) {
+        case AppInfo.LOCKED:
         	cache.app_state.setVisibility(View.VISIBLE);
+        	cache.app_state.setImageResource(R.drawable.lock);
+        	cache.app_state.setOnLongClickListener(mAct);
+        	cache.app_state.setOnClickListener(null);
+        	break;
+        case AppInfo.RUNNING:
+        	cache.app_state.setVisibility(View.VISIBLE);
+        	cache.app_state.setImageResource(R.drawable.running);
         	cache.app_state.setOnLongClickListener(mAct);
         	cache.app_state.setOnClickListener(mAct);
-        	if(info.isLocked) {
-        		cache.app_state.setImageResource(R.drawable.lock);
-        	}else {
-        		cache.app_state.setImageResource(R.drawable.running);
-        	}
-        }else {
+        	break;
+        case AppInfo.NO_RUNNING:
         	cache.app_state.setVisibility(View.GONE);
+        	break;
         }
         
         if (info.mShowOperation) {
@@ -185,7 +190,9 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
 				
 				@Override
 				public void onAnimationEnd(Animation animation) {
+					info.state = AppInfo.NO_RUNNING;
 					mAppInfos.remove(info);
+					mAppInfos.add(info);
 					notifyDataSetChanged();
 				}
 			});
@@ -245,11 +252,13 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
     }
 
     public static class AppInfo {
+    	public static final int LOCKED = 0;
+    	public static final int RUNNING = 1;
+    	public static final int NO_RUNNING = 2;
         public String appName;
         public String packageName;
         public boolean mShowOperation;
         public boolean mDeleteAnim;
-        public boolean isRunning;
-        public boolean isLocked;
+        public int state;
     }
 }
