@@ -178,42 +178,29 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
         PackageManager pm = getPackageManager();
         List<ApplicationInfo> appList = pm.getInstalledApplications(0);
         List<AppInfo> allNoSystemApps = new ArrayList<AppInfo>(appList.size());
-
+        
+        SharedPreferences spLock = getSharedPreferences(LOCKED_APP, MODE_PRIVATE);
+        
         for (ApplicationInfo info : appList) {// 非系统APP
             if (info != null && !isSystemApp(info) && !info.packageName.equals(getPackageName())) {
                 AppInfo inf = new AppInfo();
                 inf.packageName = info.packageName;
                 inf.appName = info.loadLabel(pm).toString();
-                inf.state = AppInfo.NO_RUNNING;
+                inf.state = AppInfo.NO_RUNNING;//默认
+                
+                if (isRunndingApp(inf, runningApps)) {//运行的APP
+                    inf.state = AppInfo.RUNNING;
+                    int state = spLock.getInt(info.packageName, AppInfo.NO_RUNNING);
+                    if (state == AppInfo.LOCKED) {//lock的APP
+                        inf.state = AppInfo.LOCKED;
+                    }
+                }
+                
                 allNoSystemApps.add(inf);
             }
         }
 
-        for (AppInfo info : allNoSystemApps) {// 将运行的APP放在第1位
-            if (isRunndingApp(info, runningApps)) {
-                info.state = AppInfo.RUNNING;
-            }
-        }
-
-        SharedPreferences spLock = getSharedPreferences(LOCKED_APP, MODE_PRIVATE);
-        for (AppInfo info : allNoSystemApps) {// 将运行的APP中lock的放到第1位
-            int state = spLock.getInt(info.packageName, AppInfo.NO_RUNNING);
-            if (state == AppInfo.LOCKED) {
-                info.state = AppInfo.LOCKED;
-            }
-        }
-
         Collections.sort(allNoSystemApps, AppComparator);
-
-        SharedPreferences spTop = getSharedPreferences(TOP_APP, MODE_PRIVATE);
-        for (AppInfo info : allNoSystemApps) {// 将运行的APP中top的放到第1位
-            String topPackageName = spTop.getString(TOP_APP, "");
-            if (!TextUtils.isEmpty(topPackageName) && topPackageName.equals(info.packageName)) {
-                allNoSystemApps.remove(info);
-                allNoSystemApps.add(0, info);
-                break;
-            }
-        }
 
         return allNoSystemApps;
     }
@@ -483,13 +470,14 @@ public class MainActivity extends Activity implements OnClickListener, OnItemCli
     public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
         if (isPerformLongClick) {
             isPerformLongClick = false;
-        } else {
-            AppInfo info = appAdapter.getItem(position);
-            SharedPreferences sp = getSharedPreferences(TOP_APP, MODE_PRIVATE);
-            sp.edit().putString(TOP_APP, info.packageName).commit();
-            Toast.makeText(getApplicationContext(), "Top App : " + info.packageName, Toast.LENGTH_LONG).show();
-            relodData();
-        }
+        } 
+//        else {
+//            AppInfo info = appAdapter.getItem(position);
+//            SharedPreferences sp = getSharedPreferences(TOP_APP, MODE_PRIVATE);
+//            sp.edit().putString(TOP_APP, info.packageName).commit();
+//            Toast.makeText(getApplicationContext(), "Top App : " + info.packageName, Toast.LENGTH_LONG).show();
+//            relodData();
+//        }
         return true;
     }
 
