@@ -63,28 +63,37 @@
             android:id="@+id/uninstall"
             android:layout_width="0px"
             android:layout_height="50dp"
+            android:layout_margin="1dp"
             android:layout_weight="1.0"
+            android:background="@drawable/menu_item_bg"
             android:focusable="false"
             android:gravity="center"
-            android:text="卸载软件" />
+            android:text="@string/operate_uninstall"
+            android:textColor="@android:color/white" />
 
         <Button
             android:id="@+id/detail"
             android:layout_width="0px"
             android:layout_height="50dp"
+            android:layout_margin="1dp"
             android:layout_weight="1.0"
+            android:background="@drawable/menu_item_bg"
             android:focusable="false"
             android:gravity="center"
-            android:text="详细信息" />
+            android:text="@string/operate_detail"
+            android:textColor="@android:color/white" />
 
         <Button
             android:id="@+id/clearcache"
             android:layout_width="0px"
             android:layout_height="50dp"
+            android:layout_margin="1dp"
             android:layout_weight="1.0"
+            android:background="@drawable/menu_item_bg"
             android:focusable="false"
             android:gravity="center"
-            android:text="清除缓存" />
+            android:text="@string/operate_clear"
+            android:textColor="@android:color/white" />
     </LinearLayout>
 
 </LinearLayout>

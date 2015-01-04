@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">AppTool</string>
+    <string name="uninstall">卸载</string>
+    <string name="action_refresh">刷新</string>
+    <string name="action_help">帮助</string>
+    <string name="action_about">关于</string>
+    <string name="action_feedback">反馈</string>
+    <string name="action_help_msg">这个APP的功能是：清除缓存，卸载软件，彻底停止应用程序</string>
+    <string name="action_about_msg">APP 工具</string>
+    <string name="loading">加载中...</string>
+    <string name="operate_detail">详细信息</string>
+    <string name="operate_uninstall">卸载软件</string>
+    <string name="operate_clear">清除缓存</string>
+
+</resources>

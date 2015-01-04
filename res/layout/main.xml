@@ -1,20 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
-<merge xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent" >
 
-    <ListView
-        android:id="@+id/app_list"
+    <LinearLayout
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:animationCache="true"
-        android:descendantFocusability="blocksDescendants"
-        android:divider="@null"
-        android:fadingEdge="none"
-        android:fastScrollEnabled="true"
-        android:layoutAnimation="@anim/animationlayout"
-        android:scrollbarAlwaysDrawVerticalTrack="true"
-        android:scrollbarStyle="insideOverlay"
-        android:scrollingCache="false" />
+        android:orientation="vertical" >
 
-</merge>
+        <RelativeLayout
+            android:layout_width="fill_parent"
+            android:layout_height="50dp"
+            android:background="#22292c" >
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentLeft="true"
+                android:layout_centerVertical="true"
+                android:gravity="center"
+                android:paddingLeft="10dp"
+                android:text="@string/app_name"
+                android:textSize="17sp" />
+
+            <ImageView
+                android:id="@+id/menu"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:layout_gravity="right"
+                android:background="@drawable/press_bg"
+                android:contentDescription="@string/app_name"
+                android:onClick="onClick"
+                android:src="@drawable/menu" />
+        </RelativeLayout>
+
+        <FrameLayout
+            android:id="@+id/container"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent" >
+        </FrameLayout>
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/cover"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent" 
+        android:background="#66000000"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/loading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/image_loading" 
+            android:contentDescription="@string/loading"
+            android:layout_gravity="center"/>
+    </FrameLayout>
+
+</FrameLayout>
