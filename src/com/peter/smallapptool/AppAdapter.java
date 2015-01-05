@@ -115,6 +115,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
 
             cache = new ViewCache();
 
+            cache.item = convertView.findViewById(R.id.item);
             cache.app_icon = (ImageView) convertView.findViewById(R.id.app_icon);
             cache.app_name = (TextView) convertView.findViewById(R.id.app_name);
             cache.clearCache = (Button) convertView.findViewById(R.id.clearcache);
@@ -122,6 +123,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
             cache.detail = (Button) convertView.findViewById(R.id.detail);
             cache.app_state = (ImageView) convertView.findViewById(R.id.kill_lock);
             cache.operation = (LinearLayout) convertView.findViewById(R.id.operation);
+            
             convertView.setTag(cache);
         } else {
             cache = (ViewCache) convertView.getTag();
@@ -146,6 +148,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
             thread_pool_executor.execute(new ThreadPoolTask(cache.app_icon, inf));
         }
         
+        cache.item.setOnClickListener(mAct);
         cache.app_icon.setImageBitmap(bmIcon);
         cache.app_name.setText(info.appName);
         cache.clearCache.setOnClickListener(mAct);
@@ -259,6 +262,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
     }
 
     public static class ViewCache {
+        View item;
         ImageView app_icon;
         ImageView app_state;
         TextView app_name;

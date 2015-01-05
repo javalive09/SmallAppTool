@@ -39,8 +39,8 @@
 
         <ImageView
             android:id="@+id/kill_lock"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="80dp"
+            android:layout_height="fill_parent"
             android:layout_alignParentEnd="true"
             android:layout_alignParentRight="true"
             android:layout_centerVertical="true"
