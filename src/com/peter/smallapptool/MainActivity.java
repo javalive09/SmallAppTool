@@ -43,9 +43,6 @@ import android.view.View.OnLongClickListener;
 import android.view.ViewConfiguration;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemClickListener;
-import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.FrameLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -61,8 +58,12 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
     private FrameLayout mContainer;
     private MyMenu mMenu;
     private View mCover;
-    private int[] menuTitleRes = { R.string.action_refresh, R.string.action_help, R.string.action_about,
-            R.string.action_feedback };
+    private int[] menuTitleRes = { 
+            R.string.action_refresh, 
+            R.string.action_help, 
+            R.string.action_about,
+            R.string.action_feedback,
+            R.string.action_about_exit};
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -130,6 +131,9 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
                     break;
                 case R.string.action_feedback:
                     break;
+                case R.string.action_about_exit:
+                    finish();
+                    break;
                 }
                 mMenu.dismiss();
             }
@@ -168,13 +172,13 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
         List<ApplicationInfo> appList = pm.getInstalledApplications(0);
         List<AppInfo> allNoSystemApps = new ArrayList<AppInfo>(appList.size());
 
+        long start = System.currentTimeMillis();
         SharedPreferences spLock = getSharedPreferences(LOCKED_APP, MODE_PRIVATE);
 
         for (ApplicationInfo info : appList) {// 非系统APP
             if (info != null && !isSystemApp(info) && !info.packageName.equals(getPackageName())) {
                 AppInfo inf = new AppInfo();
                 inf.packageName = info.packageName;
-                inf.appName = info.loadLabel(pm).toString();
                 inf.state = AppInfo.NO_RUNNING;//默认
 
                 if (isRunndingApp(inf, runningApps)) {//运行的APP
@@ -188,9 +192,11 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
                 allNoSystemApps.add(inf);
             }
         }
-
+        long delta = System.currentTimeMillis() - start;
+        Log.i("peter", "delta=" + delta);
+        
         Collections.sort(allNoSystemApps, AppComparator);
-
+        
         return allNoSystemApps;
     }
 
@@ -251,16 +257,11 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
     }
 
     private void relodData() {
-        mContainer.removeAllViews();
-        View.inflate(getApplicationContext(), R.layout.splash, mContainer);
         Looper.myQueue().addIdleHandler(new IdleHandler() {
 
             @Override
             public boolean queueIdle() {
-                long time = System.currentTimeMillis();
                 final List<AppInfo> info = getAllAppInfos();
-                long delta = System.currentTimeMillis() - time;
-                Log.i("peter", "delta time = " + delta);
                 if (appAdapter == null) {
                     appAdapter = new AppAdapter<AppInfo>(MainActivity.this);
                 }

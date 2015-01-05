@@ -1,5 +1,6 @@
 package com.peter.smallapptool;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
@@ -17,6 +18,7 @@ import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.support.v4.util.LruCache;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
@@ -36,6 +38,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
     private MainActivity mAct;
     private PackageManager mPm;
     private LruCache<String, Bitmap> mMemoryCache;
+    private HashMap<String, String> mAppNames;
     private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
     private static final int CORE_POOL_SIZE = CPU_COUNT + 1;
     private static final int MAXIMUM_POOL_SIZE = CPU_COUNT + 1;
@@ -54,6 +57,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
     public AppAdapter(MainActivity act) {
         mAct = act;
         mPm = mAct.getPackageManager();
+        mAppNames = new HashMap<String, String>();
         int maxMemory = (int) Runtime.getRuntime().maxMemory();
         int mCacheSize = maxMemory / 5;
         //给LruCache分配 
@@ -131,12 +135,6 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
 
         // 绑定数据
         convertView.setTag(R.id.appinfo, info);
-        ApplicationInfo inf = null;
-        try {
-            inf = mPm.getApplicationInfo(info.packageName, PackageManager.GET_META_DATA);
-        } catch (NameNotFoundException e) {
-            e.printStackTrace();
-        }
 
         //取缓存图片
         Bitmap bmIcon = mMemoryCache.get(info.packageName);
@@ -145,12 +143,20 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
                 mDefaultDrawable = (BitmapDrawable) mAct.getResources().getDrawable(R.drawable.ic_launcher);
             }
             bmIcon = mDefaultDrawable.getBitmap();
-            thread_pool_executor.execute(new ThreadPoolTask(cache.app_icon, inf));
+            thread_pool_executor.execute(new ThreadPoolTask(cache, info));
+        }
+        
+        String appName = mAppNames.get(info.packageName);
+        
+        if(!TextUtils.isEmpty(appName)) {
+            cache.app_name.setText(appName);
+        }else {
+            cache.app_name.setText("...");
         }
         
         cache.item.setOnClickListener(mAct);
         cache.app_icon.setImageBitmap(bmIcon);
-        cache.app_name.setText(info.appName);
+        
         cache.clearCache.setOnClickListener(mAct);
         cache.uninstall.setOnClickListener(mAct);
         cache.detail.setOnClickListener(mAct);
@@ -223,27 +229,38 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
 
     private class ThreadPoolTask implements Runnable {
 
-        ImageView mAppIcon;
-        ApplicationInfo mInfo;
+        ViewCache mCache;
+        AppInfo mInfo;
 
-        public ThreadPoolTask(ImageView appIcon, ApplicationInfo info) {
-            mAppIcon = appIcon;
+        public ThreadPoolTask(ViewCache cache, AppInfo info) {
+            mCache = cache;
             mInfo = info;
         }
 
         @Override
         public void run() {
-            BitmapDrawable bitmapDrawable = (BitmapDrawable) mInfo.loadIcon(mPm);
-            final Bitmap bmIcon = getRightSizeIcon(bitmapDrawable).getBitmap();
-            mMemoryCache.put(mInfo.packageName, bmIcon);
-            mAct.runOnUiThread(new Runnable() {
-
-                @Override
-                public void run() {
-                    mAppIcon.setImageBitmap(bmIcon);
-                }
-
-            });
+            ApplicationInfo info = null;
+            try {
+                info = mPm.getApplicationInfo(mInfo.packageName, PackageManager.GET_META_DATA);
+                mInfo.appName = info.loadLabel(mPm).toString();
+            } catch (NameNotFoundException e) {
+                e.printStackTrace();
+            }
+            if(info != null) {
+                BitmapDrawable bitmapDrawable = (BitmapDrawable) info.loadIcon(mPm);
+                final Bitmap bmIcon = getRightSizeIcon(bitmapDrawable).getBitmap();
+                mMemoryCache.put(mInfo.packageName, bmIcon);
+                mAppNames.put(mInfo.packageName, mInfo.appName);
+                mAct.runOnUiThread(new Runnable() {
+    
+                    @Override
+                    public void run() {
+                        mCache.app_icon.setImageBitmap(bmIcon);
+                        mCache.app_name.setText(mInfo.appName);
+                    }
+    
+                });
+            }
         }
 
     }

@@ -9,7 +9,7 @@
     <string name="action_feedback">feedback</string>
     <string name="action_help_msg">simple app for clear cache, uninstall app, force stop app</string>
     <string name="action_about_msg">simple app tool. </string>
-    <string name="loading">Please wait...</string>
+    <string name="action_about_exit">exit</string>
     <string name="operate_detail">detail</string>
     <string name="operate_uninstall">uninstall</string>
     <string name="operate_clear">clear data</string>
