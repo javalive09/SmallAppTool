@@ -18,7 +18,6 @@ import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.support.v4.util.LruCache;
-import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
@@ -40,12 +39,12 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
     private LruCache<String, Bitmap> mMemoryCache;
     private HashMap<String, String> mAppNames;
     private static final int CPU_COUNT = Runtime.getRuntime().availableProcessors();
-    private static final int CORE_POOL_SIZE = CPU_COUNT + 1;
-    private static final int MAXIMUM_POOL_SIZE = CPU_COUNT + 1;
+    private static final int CORE_POOL_SIZE = CPU_COUNT;
+    private static final int MAXIMUM_POOL_SIZE = CPU_COUNT;
     private static final int KEEP_ALIVE = 1;
     private Executor thread_pool_executor;
     private BitmapDrawable mDefaultDrawable;
-    private BlockingQueue<Runnable> sPoolWorkQueue = new LinkedBlockingQueue<Runnable>(10);
+    private BlockingQueue<Runnable> sPoolWorkQueue = new LinkedBlockingQueue<Runnable>(15);
     private static final ThreadFactory sThreadFactory = new ThreadFactory() {
         private final AtomicInteger mCount = new AtomicInteger(1);
 
@@ -57,7 +56,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
     public AppAdapter(MainActivity act) {
         mAct = act;
         mPm = mAct.getPackageManager();
-        mAppNames = new HashMap<String, String>();
+        mAppNames = new HashMap<String, String>(100);
         int maxMemory = (int) Runtime.getRuntime().maxMemory();
         int mCacheSize = maxMemory / 5;
         //给LruCache分配 
@@ -128,6 +127,11 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
             cache.app_state = (ImageView) convertView.findViewById(R.id.kill_lock);
             cache.operation = (LinearLayout) convertView.findViewById(R.id.operation);
             
+            cache.item.setOnClickListener(mAct);
+	        cache.clearCache.setOnClickListener(mAct);
+	        cache.uninstall.setOnClickListener(mAct);
+	        cache.detail.setOnClickListener(mAct);
+	        
             convertView.setTag(cache);
         } else {
             cache = (ViewCache) convertView.getTag();
@@ -138,28 +142,18 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
 
         //取缓存图片
         Bitmap bmIcon = mMemoryCache.get(info.packageName);
+        String appName = mAppNames.get(info.packageName);
         if (bmIcon == null) {
             if (mDefaultDrawable == null) {
                 mDefaultDrawable = (BitmapDrawable) mAct.getResources().getDrawable(R.drawable.ic_launcher);
             }
             bmIcon = mDefaultDrawable.getBitmap();
-            thread_pool_executor.execute(new ThreadPoolTask(cache, info));
+            appName = "...";
+			thread_pool_executor.execute(new ThreadPoolTask(cache, info));
         }
         
-        String appName = mAppNames.get(info.packageName);
-        
-        if(!TextUtils.isEmpty(appName)) {
-            cache.app_name.setText(appName);
-        }else {
-            cache.app_name.setText("...");
-        }
-        
-        cache.item.setOnClickListener(mAct);
         cache.app_icon.setImageBitmap(bmIcon);
-        
-        cache.clearCache.setOnClickListener(mAct);
-        cache.uninstall.setOnClickListener(mAct);
-        cache.detail.setOnClickListener(mAct);
+        cache.app_name.setText(appName);
         
         switch(info.state) {
         case AppInfo.LOCKED:

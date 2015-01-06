@@ -69,8 +69,7 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-        getOverflowMenu();
-        initMenu();
+        initView();
         relodData();
     }
 
@@ -78,7 +77,8 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
         return false;
     }
 
-    private void initMenu() {
+    private void initView() {
+    	getOverflowMenu();
         mContainer = (FrameLayout) findViewById(R.id.container);
         mCover = findViewById(R.id.cover);
         mCover.setOnTouchListener(new OnTouchListener() {
@@ -261,14 +261,12 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
 
             @Override
             public boolean queueIdle() {
-                final List<AppInfo> info = getAllAppInfos();
                 if (appAdapter == null) {
                     appAdapter = new AppAdapter<AppInfo>(MainActivity.this);
                 }
-                mContainer.removeAllViews();
+                appAdapter.setData(getAllAppInfos());                
                 View.inflate(getApplicationContext(), R.layout.list, mContainer);
                 appListView = (ListView) findViewById(R.id.app_list);
-                appAdapter.setData(info);
                 appListView.setAdapter(appAdapter);
                 return false;
             }

@@ -35,15 +35,18 @@
             android:layout_centerInParent="true"
             android:layout_margin="5dp"
             android:gravity="center"
+            android:singleLine="true"
             android:textColor="@android:color/black" />
 
         <ImageView
             android:id="@+id/kill_lock"
-            android:layout_width="80dp"
+            android:layout_width="50dp"
             android:layout_height="fill_parent"
             android:layout_alignParentEnd="true"
             android:layout_alignParentRight="true"
             android:layout_centerVertical="true"
+            android:layout_marginEnd="35dp"
+            android:layout_marginRight="35dp"
             android:contentDescription="@string/app_name"
             android:focusable="false"
             android:scaleType="center"
