@@ -36,6 +36,7 @@
             android:layout_margin="5dp"
             android:gravity="center"
             android:singleLine="true"
+            android:text="@string/item_txt_default"
             android:textColor="@android:color/black" />
 
         <ImageView

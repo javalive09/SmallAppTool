@@ -18,6 +18,7 @@ import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.support.v4.util.LruCache;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
@@ -77,7 +78,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         this.mAppInfos = appInfos;
     }
 
-    public List<AppInfo> getInfos() {
+    public List<AppInfo> getData() {
         return mAppInfos;
     }
 
@@ -131,6 +132,8 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
 	        cache.clearCache.setOnClickListener(mAct);
 	        cache.uninstall.setOnClickListener(mAct);
 	        cache.detail.setOnClickListener(mAct);
+	        cache.item.setOnLongClickListener(mAct);
+	        cache.app_state.setOnLongClickListener(mAct);
 	        
             convertView.setTag(cache);
         } else {
@@ -144,28 +147,23 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         Bitmap bmIcon = mMemoryCache.get(info.packageName);
         String appName = mAppNames.get(info.packageName);
         if (bmIcon == null) {
-            if (mDefaultDrawable == null) {
-                mDefaultDrawable = (BitmapDrawable) mAct.getResources().getDrawable(R.drawable.ic_launcher);
-            }
-            bmIcon = mDefaultDrawable.getBitmap();
-            appName = "...";
 			thread_pool_executor.execute(new ThreadPoolTask(cache, info));
+        }else {
+            cache.app_icon.setImageBitmap(bmIcon);
+            if(!TextUtils.isEmpty(appName)) {
+                cache.app_name.setText(appName);
+            }
         }
-        
-        cache.app_icon.setImageBitmap(bmIcon);
-        cache.app_name.setText(appName);
         
         switch(info.state) {
         case AppInfo.LOCKED:
         	cache.app_state.setVisibility(View.VISIBLE);
         	cache.app_state.setImageResource(R.drawable.lock);
-        	cache.app_state.setOnLongClickListener(mAct);
         	cache.app_state.setOnClickListener(null);
         	break;
         case AppInfo.RUNNING:
         	cache.app_state.setVisibility(View.VISIBLE);
         	cache.app_state.setImageResource(R.drawable.running);
-        	cache.app_state.setOnLongClickListener(mAct);
         	cache.app_state.setOnClickListener(mAct);
         	break;
         case AppInfo.NO_RUNNING:

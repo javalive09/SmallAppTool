@@ -13,5 +13,6 @@
     <string name="operate_detail">detail</string>
     <string name="operate_uninstall">uninstall</string>
     <string name="operate_clear">clear data</string>
+    <string name="item_txt_default">...</string>
 
 </resources>

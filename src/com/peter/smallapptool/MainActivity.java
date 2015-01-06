@@ -542,10 +542,11 @@ public class MainActivity extends Activity implements OnClickListener,
 
 	@Override
 	public boolean onLongClick(View v) {
-		View parent = (View) v.getParent().getParent();
-		AppInfo info = (AppInfo) parent.getTag(R.id.appinfo);
+		
 		switch (v.getId()) {
 		case R.id.kill_lock:
+		    View parent = (View) v.getParent().getParent();
+	        AppInfo info = (AppInfo) parent.getTag(R.id.appinfo);
 			if (info.state == AppInfo.RUNNING) {
 				info.state = AppInfo.LOCKED;
 				info.mShowOperation = false;
@@ -553,17 +554,21 @@ public class MainActivity extends Activity implements OnClickListener,
 				info.state = AppInfo.RUNNING;
 			}
 
-			SharedPreferences sp = getSharedPreferences(LOCKED_APP,
-					MODE_PRIVATE);
+			SharedPreferences sp = getSharedPreferences(LOCKED_APP, MODE_PRIVATE);
 			sp.edit().putInt(info.packageName, info.state).commit();
-			appAdapter.notifyDataSetInvalidated();
-			Vibrator mVibrator01 = (Vibrator) getApplication()
-					.getSystemService(Service.VIBRATOR_SERVICE);
-			mVibrator01.vibrate(100);
-			parent.requestFocus();
-			return true;
+			appAdapter.notifyDataSetChanged();
+			break;
+		case R.id.item:
+		    parent = (View) v.getParent();
+            info = (AppInfo) parent.getTag(R.id.appinfo);
+            Intent intent = getPackageManager().getLaunchIntentForPackage(info.packageName);
+            startActivity(intent);
+		    break;
 		}
-		return false;
+		Vibrator mVibrator01 = (Vibrator) getApplication()
+                .getSystemService(Service.VIBRATOR_SERVICE);
+        mVibrator01.vibrate(100);
+		return true;
 	}
 
 }

@@ -3,6 +3,6 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:gravity="center"
-    android:text="@string/loading"
+    android:text="@string/app_name"
     android:visibility="gone"
     android:textSize="25sp" />
