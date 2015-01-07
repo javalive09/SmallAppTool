@@ -26,9 +26,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.TransitionDrawable;
 import android.net.Uri;
@@ -281,15 +279,15 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
 
     }
 
-    private void showAnim() {
-
-        for (int i = 0; i < appListView.getChildCount(); i++) {
-            View item = appListView.getChildAt(i);
-            ImageView state = (ImageView) item.findViewById(R.id.kill_lock);
-            setImageDrawableWithFade(state, new ColorDrawable(Color.parseColor("#e4e4e4")));
-        }
-
-    }
+//    private void showAnim() {
+//
+//        for (int i = 0; i < appListView.getChildCount(); i++) {
+//            View item = appListView.getChildAt(i);
+//            ImageView state = (ImageView) item.findViewById(R.id.kill_lock);
+//            setImageDrawableWithFade(state, new ColorDrawable(Color.parseColor("#e4e4e4")));
+//        }
+//
+//    }
 
     public void setImageBitmapWithFade(final ImageView imageView, final Bitmap bitmap) {
         Resources resources = imageView.getResources();

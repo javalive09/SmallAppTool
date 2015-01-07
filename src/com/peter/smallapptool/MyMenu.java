@@ -94,7 +94,8 @@ public class MyMenu {
 				return super.dispatchKeyEvent(event);
 			}
 			
-		    protected LayoutParams generateDefaultLayoutParams() {
+		    @SuppressWarnings("deprecation")
+            protected LayoutParams generateDefaultLayoutParams() {
 		        return new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
 		    }
 			
