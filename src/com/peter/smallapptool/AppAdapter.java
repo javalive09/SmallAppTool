@@ -44,7 +44,6 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
     private static final int MAXIMUM_POOL_SIZE = CPU_COUNT;
     private static final int KEEP_ALIVE = 1;
     private Executor thread_pool_executor;
-    private BitmapDrawable mDefaultDrawable;
     private BlockingQueue<Runnable> sPoolWorkQueue = new LinkedBlockingQueue<Runnable>(15);
     private static final ThreadFactory sThreadFactory = new ThreadFactory() {
         private final AtomicInteger mCount = new AtomicInteger(1);
@@ -134,6 +133,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
 	        cache.detail.setOnClickListener(mAct);
 	        cache.item.setOnLongClickListener(mAct);
 	        cache.app_state.setOnLongClickListener(mAct);
+	        cache.app_icon.setOnClickListener(mAct);
 	        
             convertView.setTag(cache);
         } else {
