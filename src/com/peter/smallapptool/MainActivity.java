@@ -14,7 +14,6 @@ import com.peter.smallapptool.AppAdapter.AppInfo;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
-import android.app.AlertDialog;
 import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.Service;
 import android.content.BroadcastReceiver;
@@ -38,6 +37,7 @@ import android.os.MessageQueue.IdleHandler;
 import android.os.Vibrator;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -54,10 +54,10 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class MainActivity extends Activity implements OnClickListener, OnLongClickListener {
 
-    private AlertDialog mDialog;
     private String forecStopPackageName;
     private AppAdapter<AppInfo> appAdapter;
     private static final String LOCKED_APP = "locked_app";
@@ -115,23 +115,15 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
             @Override
             public void OnItemClick(int order) {
 
-                if (mDialog == null) {
-                    mDialog = new AlertDialog.Builder(MainActivity.this).create();
-                }
-
                 switch (order) {
                 case R.string.action_refresh:
                     relodData();
                     break;
                 case R.string.action_help:
-                    mDialog.setTitle(getResources().getString(R.string.action_help));
-                    mDialog.setMessage(getResources().getString(R.string.action_help_msg));
-                    mDialog.show();
+                    showToast(R.string.action_help_msg);
                     break;
                 case R.string.action_about:
-                    mDialog.setTitle(getResources().getString(R.string.action_about));
-                    mDialog.setMessage(getResources().getString(R.string.action_about_msg));
-                    mDialog.show();
+                    showToast(R.string.action_about_msg);
                     break;
                 case R.string.action_feedback:
                     break;
@@ -545,6 +537,12 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
         }
 
         return true;
+    }
+    
+    private void showToast(int StringId) {
+        Toast toast = Toast.makeText(getApplicationContext(), StringId, Toast.LENGTH_LONG);
+        toast.setGravity(Gravity.CENTER, 0, 0);
+        toast.show();
     }
 
 }
