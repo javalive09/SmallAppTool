@@ -34,6 +34,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.os.MessageQueue.IdleHandler;
+import android.os.StrictMode;
 import android.os.Vibrator;
 import android.text.TextUtils;
 import android.util.Log;
@@ -58,6 +59,7 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity implements OnClickListener, OnLongClickListener {
 
+//    private static final boolean DEVELOPER_MODE = true;
     private String forecStopPackageName;
     private AppAdapter<AppInfo> appAdapter;
     private static final String LOCKED_APP = "locked_app";
@@ -71,6 +73,20 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+//        if (DEVELOPER_MODE) {
+//            StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
+//                    .detectDiskReads()
+//                    .detectDiskWrites()
+//                    .detectNetwork()   // or .detectAll() for all detectable problems
+//                    .penaltyLog()
+//                    .build());
+//            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
+//                    .detectLeakedSqlLiteObjects()
+//                    .detectLeakedClosableObjects()
+//                    .penaltyLog()
+//                    .penaltyDeath()
+//                    .build());
+//        }
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         initView();
