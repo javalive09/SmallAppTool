@@ -1,6 +1,10 @@
 package com.peter.smallapptool;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -14,6 +18,7 @@ import com.peter.smallapptool.AppAdapter.AppInfo;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.ActivityManager.MemoryInfo;
 import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.Service;
 import android.content.BroadcastReceiver;
@@ -32,12 +37,12 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Looper;
 import android.os.MessageQueue.IdleHandler;
-import android.os.StrictMode;
 import android.os.Vibrator;
 import android.text.TextUtils;
-import android.util.Log;
+import android.text.format.Formatter;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -59,7 +64,6 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity implements OnClickListener, OnLongClickListener {
 
-//    private static final boolean DEVELOPER_MODE = true;
     private String forecStopPackageName;
     private AppAdapter<AppInfo> appAdapter;
     private static final String LOCKED_APP = "locked_app";
@@ -73,20 +77,6 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
-//        if (DEVELOPER_MODE) {
-//            StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
-//                    .detectDiskReads()
-//                    .detectDiskWrites()
-//                    .detectNetwork()   // or .detectAll() for all detectable problems
-//                    .penaltyLog()
-//                    .build());
-//            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
-//                    .detectLeakedSqlLiteObjects()
-//                    .detectLeakedClosableObjects()
-//                    .penaltyLog()
-//                    .penaltyDeath()
-//                    .build());
-//        }
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
         initView();
@@ -184,7 +174,6 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
         List<ApplicationInfo> appList = pm.getInstalledApplications(0);
         List<AppInfo> allNoSystemApps = new ArrayList<AppInfo>(appList.size());
 
-        long start = System.currentTimeMillis();
         SharedPreferences spLock = getSharedPreferences(LOCKED_APP, MODE_PRIVATE);
 
         for (ApplicationInfo info : appList) {// 非系统APP
@@ -204,14 +193,43 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
                 allNoSystemApps.add(inf);
             }
         }
-        long delta = System.currentTimeMillis() - start;
-        Log.i("peter", "delta=" + delta);
 
         Collections.sort(allNoSystemApps, AppComparator);
 
         return allNoSystemApps;
     }
 
+    private long getTotalMemory() {  
+        String str1 = "/proc/meminfo";// 系统内存信息文件  
+        String str2;  
+        String[] arrayOfString;  
+        long initial_memory = 0;  
+  
+        try {  
+            FileReader localFileReader = new FileReader(str1);  
+            BufferedReader localBufferedReader = new BufferedReader(  
+                    localFileReader, 8192);  
+            str2 = localBufferedReader.readLine();// 读取meminfo第一行，系统总内存大小  
+  
+            arrayOfString = str2.split("\\s+");  
+  
+            initial_memory = Integer.valueOf(arrayOfString[1]).intValue() * 1024;// 获得系统总内存，单位是KB，乘以1024转换为Byte  
+            localBufferedReader.close();  
+  
+        } catch (IOException e) {  
+        }  
+        
+        return initial_memory;
+//        return Formatter.formatFileSize(getBaseContext(), initial_memory);// Byte转换为KB或者MB，内存大小规格化  
+    }  
+    
+    private long getAvailableMemory() {
+        ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+        ActivityManager mActivityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        mActivityManager.getMemoryInfo(mi);
+        return mi.availMem;
+    }
+    
     Comparator<AppInfo> AppComparator = new Comparator<AppInfo>() {
 
         @Override
@@ -285,17 +303,24 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
             }
         });
 
+        refreshMemery();
     }
+    
+    private void refreshMemery() {
+        
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
 
-//    private void showAnim() {
-//
-//        for (int i = 0; i < appListView.getChildCount(); i++) {
-//            View item = appListView.getChildAt(i);
-//            ImageView state = (ImageView) item.findViewById(R.id.kill_lock);
-//            setImageDrawableWithFade(state, new ColorDrawable(Color.parseColor("#e4e4e4")));
-//        }
-//
-//    }
+            @Override
+            public void run() {
+               TextView memery = (TextView) findViewById(R.id.memery); 
+               String total = Formatter.formatFileSize(getBaseContext(), getTotalMemory());
+               String used = Formatter.formatFileSize(getBaseContext(), getTotalMemory() - getAvailableMemory());
+               String info =used + "/" +total;
+               memery.setText(info);
+            }
+            
+        }, 1500);
+    }
 
     public void setImageBitmapWithFade(final ImageView imageView, final Bitmap bitmap) {
         Resources resources = imageView.getResources();
@@ -398,6 +423,7 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
                 if (result) {
                     info.state = AppInfo.KILLING;
                     appAdapter.notifyDataSetChanged();
+                    refreshMemery();
                 }
             }
 
@@ -521,6 +547,7 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
                     if (Intent.ACTION_PACKAGE_RESTARTED.equals(action)) {
                         finishSetting();
                         mInfo.state = AppInfo.KILLING;
+                        refreshMemery();
                     } else if (Intent.ACTION_PACKAGE_REMOVED.equals(action)) {
                         mInfo.state = AppInfo.UNINSTALLED;
                     }

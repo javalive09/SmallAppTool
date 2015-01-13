@@ -14,6 +14,7 @@
             android:background="#22292c" >
 
             <TextView
+                android:id="@+id/appname"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentLeft="true"
@@ -22,6 +23,17 @@
                 android:paddingLeft="10dp"
                 android:text="@string/app_name"
                 android:textSize="17sp" />
+            
+            <TextView 
+                android:id="@+id/memery"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toRightOf="@id/appname"
+                android:layout_toLeftOf="@+id/menu"
+                android:layout_centerVertical="true"
+                android:text="@string/item_txt_default"
+                android:gravity="center"
+                />
 
             <ImageView
                 android:id="@+id/menu"

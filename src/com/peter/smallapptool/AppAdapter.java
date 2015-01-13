@@ -126,15 +126,15 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
             cache.detail = (Button) convertView.findViewById(R.id.detail);
             cache.app_state = (ImageView) convertView.findViewById(R.id.kill_lock);
             cache.operation = (LinearLayout) convertView.findViewById(R.id.operation);
-            
+
             cache.item.setOnClickListener(mAct);
-	        cache.clearCache.setOnClickListener(mAct);
-	        cache.uninstall.setOnClickListener(mAct);
-	        cache.detail.setOnClickListener(mAct);
-	        cache.item.setOnLongClickListener(mAct);
-	        cache.app_state.setOnLongClickListener(mAct);
-	        cache.app_icon.setOnClickListener(mAct);
-	        
+            cache.clearCache.setOnClickListener(mAct);
+            cache.uninstall.setOnClickListener(mAct);
+            cache.detail.setOnClickListener(mAct);
+            cache.item.setOnLongClickListener(mAct);
+            cache.app_state.setOnLongClickListener(mAct);
+            cache.app_icon.setOnClickListener(mAct);
+
             convertView.setTag(cache);
         } else {
             cache = (ViewCache) convertView.getTag();
@@ -147,75 +147,92 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
         Bitmap bmIcon = mMemoryCache.get(info.packageName);
         String appName = mAppNames.get(info.packageName);
         if (bmIcon == null) {
-			thread_pool_executor.execute(new ThreadPoolTask(cache, info));
-        }else {
+            cache.app_icon.setImageResource(R.drawable.ic_launcher);
+            cache.app_name.setText(R.string.item_txt_default);
+            final ViewCache mCache = cache;
+            if(position < 11) {
+                convertView.postDelayed(new Runnable() {
+    
+                    @Override
+                    public void run() {
+                        thread_pool_executor.execute(new ThreadPoolTask(mCache, info));
+                    }
+                }, 600);
+            }else {
+                thread_pool_executor.execute(new ThreadPoolTask(mCache, info));
+            }
+        } else {
             cache.app_icon.setImageBitmap(bmIcon);
-            if(!TextUtils.isEmpty(appName)) {
+            if (!TextUtils.isEmpty(appName)) {
                 cache.app_name.setText(appName);
             }
         }
-        
-        switch(info.state) {
+
+        switch (info.state) {
         case AppInfo.LOCKED:
-        	cache.app_state.setVisibility(View.VISIBLE);
-        	cache.app_state.setImageResource(R.drawable.lock);
-        	cache.app_state.setOnClickListener(null);
-        	break;
+            cache.app_state.setVisibility(View.VISIBLE);
+            cache.app_state.setImageResource(R.drawable.lock);
+            cache.app_state.setOnClickListener(null);
+            break;
         case AppInfo.RUNNING:
-        	cache.app_state.setVisibility(View.VISIBLE);
-        	cache.app_state.setImageResource(R.drawable.running);
-        	cache.app_state.setOnClickListener(mAct);
-        	break;
+            cache.app_state.setVisibility(View.VISIBLE);
+            cache.app_state.setImageResource(R.drawable.running);
+            cache.app_state.setOnClickListener(mAct);
+            break;
         case AppInfo.NO_RUNNING:
-        	cache.app_state.setVisibility(View.GONE);
-        	break;
+            cache.app_state.setVisibility(View.GONE);
+            break;
         case AppInfo.UNINSTALLED:
-        	Animation anim = AnimationUtils.loadAnimation(mAct, R.anim.slide_left_out);
-        	convertView.startAnimation(anim);
-        	anim.setAnimationListener(new AnimationListener() {
-				
-				@Override
-				public void onAnimationStart(Animation animation) {}
-				
-				@Override
-				public void onAnimationRepeat(Animation animation) {}
-				
-				@Override
-				public void onAnimationEnd(Animation animation) {
-					mAppInfos.remove(info);
-					notifyDataSetChanged();
-				}
-			});
-        	break;
+            Animation anim = AnimationUtils.loadAnimation(mAct, R.anim.slide_left_out);
+            convertView.startAnimation(anim);
+            anim.setAnimationListener(new AnimationListener() {
+
+                @Override
+                public void onAnimationStart(Animation animation) {
+                }
+
+                @Override
+                public void onAnimationRepeat(Animation animation) {
+                }
+
+                @Override
+                public void onAnimationEnd(Animation animation) {
+                    mAppInfos.remove(info);
+                    notifyDataSetChanged();
+                }
+            });
+            break;
         case AppInfo.KILLING:
-        	anim = AnimationUtils.loadAnimation(mAct, R.anim.slide_left_out);
-        	convertView.startAnimation(anim);
-        	anim.setAnimationListener(new AnimationListener() {
-				
-				@Override
-				public void onAnimationStart(Animation animation) {}
-				
-				@Override
-				public void onAnimationRepeat(Animation animation) {}
-				
-				@Override
-				public void onAnimationEnd(Animation animation) {
-					info.state = AppInfo.NO_RUNNING;
-					info.mShowOperation = false;
-					mAppInfos.remove(info);
-					mAppInfos.add(info);
-					notifyDataSetChanged();
-				}
-			});
-        	break;
+            anim = AnimationUtils.loadAnimation(mAct, R.anim.slide_left_out);
+            convertView.startAnimation(anim);
+            anim.setAnimationListener(new AnimationListener() {
+
+                @Override
+                public void onAnimationStart(Animation animation) {
+                }
+
+                @Override
+                public void onAnimationRepeat(Animation animation) {
+                }
+
+                @Override
+                public void onAnimationEnd(Animation animation) {
+                    info.state = AppInfo.NO_RUNNING;
+                    info.mShowOperation = false;
+                    mAppInfos.remove(info);
+                    mAppInfos.add(info);
+                    notifyDataSetChanged();
+                }
+            });
+            break;
         }
-        
+
         if (info.mShowOperation) {
             cache.operation.setVisibility(View.VISIBLE);
         } else {
             cache.operation.setVisibility(View.GONE);
         }
-        
+
         return convertView;
     }
 
@@ -238,19 +255,19 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
             } catch (NameNotFoundException e) {
                 e.printStackTrace();
             }
-            if(info != null) {
+            if (info != null) {
                 BitmapDrawable bitmapDrawable = (BitmapDrawable) info.loadIcon(mPm);
                 final Bitmap bmIcon = getRightSizeIcon(bitmapDrawable).getBitmap();
                 mMemoryCache.put(mInfo.packageName, bmIcon);
                 mAppNames.put(mInfo.packageName, mInfo.appName);
                 mAct.runOnUiThread(new Runnable() {
-    
+
                     @Override
                     public void run() {
                         mCache.app_icon.setImageBitmap(bmIcon);
                         mCache.app_name.setText(mInfo.appName);
                     }
-    
+
                 });
             }
         }
@@ -282,11 +299,11 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
     }
 
     public static class AppInfo {
-    	public static final int LOCKED = 1;
-    	public static final int RUNNING = 2;
-    	public static final int NO_RUNNING = 3;
-    	public static final int UNINSTALLED = 4;
-    	public static final int KILLING = 5;
+        public static final int LOCKED = 1;
+        public static final int RUNNING = 2;
+        public static final int NO_RUNNING = 3;
+        public static final int UNINSTALLED = 4;
+        public static final int KILLING = 5;
         public String appName;
         public String packageName;
         public boolean mShowOperation;
