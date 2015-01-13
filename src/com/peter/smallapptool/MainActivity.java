@@ -199,35 +199,83 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
         return allNoSystemApps;
     }
 
-    private long getTotalMemory() {  
-        String str1 = "/proc/meminfo";// 系统内存信息文件  
-        String str2;  
-        String[] arrayOfString;  
-        long initial_memory = 0;  
-  
-        try {  
-            FileReader localFileReader = new FileReader(str1);  
-            BufferedReader localBufferedReader = new BufferedReader(  
-                    localFileReader, 8192);  
-            str2 = localBufferedReader.readLine();// 读取meminfo第一行，系统总内存大小  
-  
-            arrayOfString = str2.split("\\s+");  
-  
-            initial_memory = Integer.valueOf(arrayOfString[1]).intValue() * 1024;// 获得系统总内存，单位是KB，乘以1024转换为Byte  
-            localBufferedReader.close();  
-  
-        } catch (IOException e) {  
-        }  
-        
-        return initial_memory;
-//        return Formatter.formatFileSize(getBaseContext(), initial_memory);// Byte转换为KB或者MB，内存大小规格化  
-    }  
+    public static long getMemoryTotalKb() {
+        long totalSize = -1L;
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new FileReader("/proc/meminfo"));
+            String line, totle = null;
+
+            while ((line = br.readLine()) != null) {
+                if (line.startsWith("MemTotal:")) {
+                    totle = line.split(" +")[1];
+                    break;
+                }
+            }
+
+            totalSize = Long.valueOf(totle);
+
+            return totalSize;
+        } catch (Exception e) {
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+        }
+
+        return totalSize;
+    }
     
-    private long getAvailableMemory() {
-        ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
-        ActivityManager mActivityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
-        mActivityManager.getMemoryInfo(mi);
-        return mi.availMem;
+    public static long getMemoryFreeKb() {
+        long freeSize = -1L;
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new FileReader("/proc/meminfo"));
+            String line, buff = null, cache = null, free = null;
+            int count = 0;
+            while ((line = br.readLine()) != null) {
+                if (line.startsWith("MemFree")) {
+                    count++;
+                    free = line.split(" +")[1];
+                    if (count >= 3) {
+                        break;
+                    }
+                } else if (line.startsWith("Buffers")) {
+                    count++;
+                    buff = line.split(" +")[1];
+                    if (count >= 3) {
+                        break;
+                    }
+                } else if (line.startsWith("Cached")) {
+                    count++;
+                    cache = line.split(" +")[1];
+                    if (count >= 3) {
+                        break;
+                    }
+                } else {
+                    continue;
+                }
+            }
+
+            freeSize = (Long.valueOf(free) + Long.valueOf(buff) + Long.valueOf(cache));
+
+            return freeSize;
+        } catch (Exception e) {
+        } finally {
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (IOException e) {
+                    // ignore
+                }
+            }
+        }
+
+        return freeSize;
     }
     
     Comparator<AppInfo> AppComparator = new Comparator<AppInfo>() {
@@ -313,9 +361,9 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
             @Override
             public void run() {
                TextView memery = (TextView) findViewById(R.id.memery); 
-               String total = Formatter.formatFileSize(getBaseContext(), getTotalMemory());
-               String used = Formatter.formatFileSize(getBaseContext(), getTotalMemory() - getAvailableMemory());
-               String info =used + "/" +total;
+               String total = Formatter.formatFileSize(getBaseContext(), getMemoryTotalKb() * 1024);
+               String used = Formatter.formatFileSize(getBaseContext(), getMemoryTotalKb() * 1024 - getMemoryFreeKb() * 1024);
+               String info = used + "/" +total;
                memery.setText(info);
             }
             
