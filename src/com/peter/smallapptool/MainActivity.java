@@ -367,7 +367,7 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
                memery.setText(info);
             }
             
-        }, 1500);
+        }, 1600);
     }
 
     public void setImageBitmapWithFade(final ImageView imageView, final Bitmap bitmap) {

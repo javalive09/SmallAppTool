@@ -157,7 +157,7 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
                     public void run() {
                         thread_pool_executor.execute(new ThreadPoolTask(mCache, info));
                     }
-                }, 600);
+                }, 1000);
             }else {
                 thread_pool_executor.execute(new ThreadPoolTask(mCache, info));
             }
