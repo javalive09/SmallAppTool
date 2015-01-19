@@ -225,6 +225,9 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
                 }
             });
             break;
+        default:
+        	cache.app_state.setVisibility(View.GONE);
+        	break;
         }
 
         if (info.mShowOperation) {
@@ -299,9 +302,9 @@ public class AppAdapter<AppInfo> extends BaseAdapter {
     }
 
     public static class AppInfo {
-        public static final int LOCKED = 1;
-        public static final int RUNNING = 2;
-        public static final int NO_RUNNING = 3;
+        public static final int LOCKED = Integer.MAX_VALUE;
+        public static final int RUNNING = LOCKED - 1;
+        public static final int NO_RUNNING = -1;
         public static final int UNINSTALLED = 4;
         public static final int KILLING = 5;
         public String appName;

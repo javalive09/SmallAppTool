@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -18,7 +17,6 @@ import com.peter.smallapptool.AppAdapter.AppInfo;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
-import android.app.ActivityManager.MemoryInfo;
 import android.app.ActivityManager.RunningAppProcessInfo;
 import android.app.Service;
 import android.content.BroadcastReceiver;
@@ -66,14 +64,18 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
 
     private String forecStopPackageName;
     private AppAdapter<AppInfo> appAdapter;
-    private static final String LOCKED_APP = "locked_app";
+    private static final String APP_STATE = "app_state";
     private BroadcastReceiver forceStopReceiver;
     private ListView appListView;
     private FrameLayout mContainer;
     private MyMenu mMenu;
     private View mCover;
-    private int[] menuTitleRes = { R.string.action_refresh, R.string.action_help, R.string.action_about,
-            R.string.action_feedback, R.string.action_about_exit };
+    private int[] menuTitleRes = { 
+    		R.string.action_refresh, 
+    		R.string.action_help, 
+    		R.string.action_about,
+            R.string.action_feedback, 
+            R.string.action_about_exit };
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -174,22 +176,24 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
         List<ApplicationInfo> appList = pm.getInstalledApplications(0);
         List<AppInfo> allNoSystemApps = new ArrayList<AppInfo>(appList.size());
 
-        SharedPreferences spLock = getSharedPreferences(LOCKED_APP, MODE_PRIVATE);
+        SharedPreferences spLock = getSharedPreferences(APP_STATE, MODE_PRIVATE);
 
         for (ApplicationInfo info : appList) {// 非系统APP
             if (info != null && !isSystemApp(info) && !info.packageName.equals(getPackageName())) {
                 AppInfo inf = new AppInfo();
                 inf.packageName = info.packageName;
-                inf.state = AppInfo.NO_RUNNING;// 默认
-
+                inf.state = AppInfo.NO_RUNNING;
+                
                 if (isRunndingApp(inf, runningApps)) {// 运行的APP
                     inf.state = AppInfo.RUNNING;
                     int state = spLock.getInt(info.packageName, AppInfo.NO_RUNNING);
                     if (state == AppInfo.LOCKED) {// lock的APP
-                        inf.state = AppInfo.LOCKED;
+                    	inf.state = AppInfo.LOCKED;
                     }
+                }else{
+	                int state = spLock.getInt(info.packageName, AppInfo.NO_RUNNING);// 默认
+	                inf.state = state;
                 }
-
                 allNoSystemApps.add(inf);
             }
         }
@@ -283,9 +287,9 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
         @Override
         public int compare(AppInfo lhs, AppInfo rhs) {
             if (lhs.state < rhs.state) {
-                return -1;
-            } else if (lhs.state > rhs.state) {
                 return 1;
+            } else if (lhs.state > rhs.state) {
+                return -1;
             }
             return 0;
         }
@@ -569,6 +573,11 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
             info = (AppInfo) parent.getTag(R.id.appinfo);
             Intent intent = getPackageManager().getLaunchIntentForPackage(info.packageName);
             startActivity(intent);
+            
+            if(info.state != AppInfo.LOCKED && info.state != AppInfo.RUNNING) {
+            	SharedPreferences sp = getSharedPreferences(APP_STATE, MODE_PRIVATE);
+            	sp.edit().putInt(info.packageName, info.state + 1).commit();
+            }
             break;
         default:
             break;
@@ -619,7 +628,7 @@ public class MainActivity extends Activity implements OnClickListener, OnLongCli
                 info.state = AppInfo.RUNNING;
             }
 
-            SharedPreferences sp = getSharedPreferences(LOCKED_APP, MODE_PRIVATE);
+            SharedPreferences sp = getSharedPreferences(APP_STATE, MODE_PRIVATE);
             sp.edit().putInt(info.packageName, info.state).commit();
             appAdapter.notifyDataSetChanged();
             Vibrator mVibrator01 = (Vibrator) getApplication().getSystemService(Service.VIBRATOR_SERVICE);

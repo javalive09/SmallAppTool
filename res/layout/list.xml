@@ -10,5 +10,4 @@
     android:fastScrollEnabled="true"
     android:layoutAnimation="@anim/animationlayout"
     android:scrollbarAlwaysDrawVerticalTrack="true"
-    android:scrollbarStyle="insideOverlay"
-    android:scrollingCache="false" />
+    android:scrollbars="none"/>
