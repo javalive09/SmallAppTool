@@ -146,7 +146,7 @@ public class MainActivity extends Activity implements OnClickListener,
 
 	private void showLoading() {
 		mCover.setVisibility(View.VISIBLE);
-		mCover.clearAnimation();
+		mCover.findViewById(R.id.loading).clearAnimation();
 		Animation anim = AnimationUtils.loadAnimation(this,
 				R.anim.data_loading_rotate);
 		mCover.findViewById(R.id.loading).startAnimation(anim);
@@ -154,7 +154,7 @@ public class MainActivity extends Activity implements OnClickListener,
 
 	private void hideLoading() {
 		mCover.findViewById(R.id.loading).clearAnimation();
-		mCover.setVisibility(View.GONE);
+		mCover.setVisibility(View.INVISIBLE);
 	}
 
 	@Override

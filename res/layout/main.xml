@@ -60,7 +60,7 @@
         android:layout_width="fill_parent"
         android:layout_height="fill_parent" 
         android:background="#66000000"
-        android:visibility="gone">
+        android:visibility="invisible">
 
         <ImageView
             android:id="@+id/loading"

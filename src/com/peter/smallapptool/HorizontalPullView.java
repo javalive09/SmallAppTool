@@ -113,7 +113,7 @@ public class HorizontalPullView extends ViewGroup {
 				mDeltaY = textViewH;
 			}
 			scrollTo(0, -mDeltaY);
-			if (Math.abs(mDeltaY) >= mTextView.getMeasuredHeight()) {
+			if (mDeltaY >= mTextView.getMeasuredHeight()) {
 				mTextView.setText("现在抬手全部清理");
 				canFinish = true;
 			} else {
