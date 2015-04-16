@@ -13,7 +13,7 @@
         android:descendantFocusability="blocksDescendants"
         android:divider="@null"
         android:fadingEdge="none"
-        android:fastScrollEnabled="true"
+        android:fastScrollEnabled="false"
         android:layoutAnimation="@anim/animationlayout"
         android:scrollbarAlwaysDrawVerticalTrack="true"
         android:scrollbars="none" />
